@@ -1,0 +1,55 @@
+{
+  "name": "termux-vision",
+  "version": "0.2.0-alpha.1",
+  "description": "Native On-Device Computer Vision & VLM Multimodal Inference Framework for Android Termux & ARM64 (Dual-Engine Python & Node.js/TypeScript)",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "bin": {
+    "termux-vision": "bin/cli.js",
+    "tv": "bin/cli.js"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "test": "node tests/node_smoke.test.js"
+  },
+  "keywords": [
+    "termux",
+    "vision",
+    "vlm",
+    "multimodal",
+    "computer-vision",
+    "smolvlm",
+    "qwen2-vl",
+    "edge-ai",
+    "on-device-ai",
+    "vulkan",
+    "arm64",
+    "android",
+    "llama-cli",
+    "gguf",
+    "canny",
+    "haar-cascade",
+    "open-source"
+  ],
+  "author": "uno-km (AMEVA Foundation) <dev@amevafoundation.org>",
+  "license": "Apache-2.0",
+  "homepage": "https://uno-km.vercel.app/lib/vision/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uno-km/termux-vision.git"
+  },
+  "bugs": {
+    "url": "https://github.com/uno-km/termux-vision/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
