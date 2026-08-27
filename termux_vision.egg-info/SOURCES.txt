@@ -69,5 +69,6 @@ tests/test_safetensors_and_models.py
 tests/test_termux_train_bridge.py
 tests/test_tvrp_v1.py
 tests/test_v020_smoke_suite.py
+tests/test_vlm_advanced_parameters_and_guards.py
 tests/test_vlm_module.py
 tests/test_vlm_user_experience_and_errors.py

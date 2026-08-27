@@ -3,7 +3,7 @@ termux-vision: Lightweight On-Device Computer Vision & VLM Framework for Android
 Open-Source under Apache License 2.0.
 """
 
-__version__ = "0.2.0-alpha.1"
+__version__ = "1.0.0"
 __author__ = "termux-vision contributors"
 __license__ = "Apache-2.0"
 
