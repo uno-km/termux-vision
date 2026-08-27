@@ -108,8 +108,8 @@ npx termux-vision doctor --probe-vulkan
 ### 3.1 CLI Workflows
 
 ```bash
-# 1. Basic VLM Multimodal Image Description (Auto device mode)
-termux-vision vlm sample.jpg -p "이 사진 속 인물의 표정, 복장, 그리고 배경을 한국어로 설명해줘."
+# 1. Analyze visual content with VLM (SmolVLM / Qwen2-VL)
+termux-vision vlm sample.jpg -p "Describe the expressions, clothing, and background details in this image."
 
 # 2. Advanced VLM Inference with Fine-Tuning Hyperparameters
 termux-vision vlm sample.jpg \
@@ -124,7 +124,7 @@ termux-vision vlm sample.jpg \
   --seed 42 \
   --system-prompt "You are an expert AI forensic image analyst."
 
-# 3. Direct Custom ("싸제") GGUF Model Execution
+# 3. Direct Custom GGUF Model Execution
 termux-vision vlm sample.jpg \
   --model /sdcard/models/custom_vlm.gguf \
   --mmproj /sdcard/models/custom_mmproj.gguf
