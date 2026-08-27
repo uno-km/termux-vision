@@ -1,6 +1,6 @@
 {
   "name": "termux-vision",
-  "version": "0.2.0-alpha.1",
+  "version": "1.0.0",
   "description": "Native On-Device Computer Vision & VLM Multimodal Inference Framework for Android Termux & ARM64 (Dual-Engine Python & Node.js/TypeScript)",
   "main": "index.js",
   "types": "index.d.ts",

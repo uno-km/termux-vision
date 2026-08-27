@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termux-vision"
-version = "0.2.0a1"
+version = "1.0.0"
 description = "Lightweight On-Device Computer Vision and VLM Framework for Android Termux"
 readme = "README.md"
 authors = [
@@ -44,3 +44,6 @@ Homepage = "https://uno-km.vercel.app/lib/vision/"
 Documentation = "https://uno-km.vercel.app/lib/vision/"
 Repository = "https://github.com/uno-km/termux-vision"
 Issues = "https://github.com/uno-km/termux-vision/issues"
+
+[tool.setuptools.packages.find]
+include = ["termux_vision*"]
