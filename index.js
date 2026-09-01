@@ -15,12 +15,15 @@ const detect = require('./lib/detect');
 
 const packageJson = require('./package.json');
 const version = packageJson.version;
+const cacheManager = new cache.ModelCacheManager();
+cacheManager.ModelCacheManager = cache.ModelCacheManager;
 
 module.exports = {
   version,
   __version__: version,
   errors,
-  cache,
+  cache: cacheManager,
+  ModelCacheManager: cache.ModelCacheManager,
   vlm,
   load: vlm.load,
   doctor: doctor.runDoctor,

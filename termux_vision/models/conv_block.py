@@ -7,19 +7,30 @@ class DepthwiseSeparableConv2D:
     1. Depthwise Conv (Spatial filtering per channel)
     2. Pointwise Conv (1x1 Linear combination across channels)
     """
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1, weights: dict = None):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
 
-        # Initialize lightweight weights
-        scale_dw = np.sqrt(2.0 / (kernel_size * kernel_size))
-        self.dw_weights = np.random.randn(in_channels, kernel_size, kernel_size).astype(np.float32) * scale_dw
-        
-        scale_pw = np.sqrt(2.0 / in_channels)
-        self.pw_weights = np.random.randn(out_channels, in_channels).astype(np.float32) * scale_pw
-        self.bias = np.zeros(out_channels, dtype=np.float32)
+        if weights is not None:
+            self.dw_weights = np.asarray(weights["dw"], dtype=np.float32)
+            self.pw_weights = np.asarray(weights["pw"], dtype=np.float32)
+            self.bias = np.asarray(weights.get("bias", np.zeros(out_channels, dtype=np.float32)), dtype=np.float32)
+        else:
+            # Deterministic Kaiming Normal initialization with fixed standard normal scaling
+            scale_dw = np.sqrt(2.0 / (kernel_size * kernel_size * in_channels))
+            scale_pw = np.sqrt(2.0 / in_channels)
+            rng = np.random.RandomState(42 + in_channels * 100 + out_channels)
+            self.dw_weights = (rng.randn(in_channels, kernel_size, kernel_size) * scale_dw).astype(np.float32)
+            self.pw_weights = (rng.randn(out_channels, in_channels) * scale_pw).astype(np.float32)
+            self.bias = np.zeros(out_channels, dtype=np.float32)
+
+    def set_weights(self, dw_weights: np.ndarray, pw_weights: np.ndarray, bias: np.ndarray = None):
+        self.dw_weights = np.asarray(dw_weights, dtype=np.float32)
+        self.pw_weights = np.asarray(pw_weights, dtype=np.float32)
+        if bias is not None:
+            self.bias = np.asarray(bias, dtype=np.float32)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """

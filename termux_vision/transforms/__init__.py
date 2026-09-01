@@ -17,6 +17,12 @@ from .compose import (
     ToChannelFirst
 )
 
+from .scale import (
+    ImageQuality,
+    resolve_target_dimensions,
+    prepare_image_for_inference
+)
+
 __all__ = [
     "to_grayscale",
     "to_rgb",
@@ -31,5 +37,8 @@ __all__ = [
     "ToGrayscale",
     "ToRGB",
     "Normalize",
-    "ToChannelFirst"
+    "ToChannelFirst",
+    "ImageQuality",
+    "resolve_target_dimensions",
+    "prepare_image_for_inference"
 ]

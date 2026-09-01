@@ -46,7 +46,7 @@ class SubprocessVLMRuntime:
         executable: str,
         threads: int = 4,
         backend: str = "cpu",
-        timeout_sec: int = 120,
+        timeout_sec: int = 300,
         fallback: bool = True,
         custom_text_model: Optional[str] = None,
         custom_vision_model: Optional[str] = None,
@@ -136,7 +136,7 @@ class SubprocessVLMRuntime:
         if self.custom_ngl is not None:
             ngl_val = str(self.custom_ngl)
         else:
-            ngl_val = "99" if target_backend == "vulkan" else "0"
+            ngl_val = "99" if target_backend in ("vulkan", "auto", "gpu") else "0"
 
         cli_cmd = [
             self.executable,
@@ -144,13 +144,17 @@ class SubprocessVLMRuntime:
             "--mmproj", str(self.vision_model_path),
             "--image", str(image_path),
             "-f", str(prompt_file),
-            "-st",
             "-t", str(self.threads),
             "-c", str(self.context_limit),
             "-n", str(max_tokens),
             "--temp", str(temperature),
-            "-ngl", ngl_val
+            "-ngl", ngl_val,
+            "--single-turn",
+            "--simple-io"
         ]
+
+        if target_backend in ("auto", "vulkan", "gpu"):
+            cli_cmd.extend(["--device", "auto" if target_backend == "auto" else "vulkan"])
 
         if repeat_penalty is not None:
             cli_cmd.extend(["--repeat-penalty", str(repeat_penalty)])
@@ -211,42 +215,96 @@ class SubprocessVLMRuntime:
 
             total_ms = (time.perf_counter() - t0) * 1000.0
 
-            lines = out.splitlines()
-            content_lines = []
-            start_capture = False
+            # Parse llama-cli hardware & timing diagnostics from full logs
+            load_ms = None
+            prompt_eval_ms = None
+            eval_ms = None
             actual_tps = None
+            vulkan_dev = None
+            offload_info = None
 
-            for line in lines:
-                if line.strip().startswith(">"):
-                    start_capture = True
-                    continue
-                if start_capture:
-                    if "[" in line and "t/s" in line:
-                        try:
-                            parts = line.split("Generation:")
-                            if len(parts) > 1:
-                                actual_tps = float(parts[1].replace("t/s", "").replace("]", "").strip())
-                        except Exception:
-                            pass
-                        continue
-                    if "Exiting" in line or "main: image" in line:
-                        continue
-                    cleaned = line.replace("|", "").replace("-", "").replace("/", "").replace("\\", "").strip()
-                    if cleaned:
-                        content_lines.append(cleaned)
+            full_log = out + "\n" + err
+            for l in full_log.splitlines():
+                if "ggml_vulkan: Using device:" in l or "ggml_vulkan: Found" in l:
+                    vulkan_dev = l.strip()
+                elif "offloaded" in l and "layers to GPU" in l:
+                    offload_info = l.strip()
+                elif "load time =" in l:
+                    try:
+                        load_ms = float(l.split("load time =")[1].split("ms")[0].strip())
+                    except (ValueError, IndexError):
+                        logger.debug("Failed to parse load time metric from line: %s", l)
+                elif "prompt eval time =" in l:
+                    try:
+                        prompt_eval_ms = float(l.split("prompt eval time =")[1].split("ms")[0].strip())
+                    except (ValueError, IndexError):
+                        logger.debug("Failed to parse prompt eval time metric from line: %s", l)
+                elif "eval time =" in l and "prompt eval" not in l:
+                    try:
+                        parts = l.split("eval time =")[1].split("ms")[0].strip()
+                        eval_ms = float(parts)
+                    except (ValueError, IndexError):
+                        logger.debug("Failed to parse eval time metric from line: %s", l)
+                elif "Generation:" in l and "t/s" in l:
+                    try:
+                        parts = l.split("Generation:")
+                        actual_tps = float(parts[1].replace("t/s", "").replace("]", "").strip())
+                    except (ValueError, IndexError):
+                        logger.debug("Failed to parse generation tps metric from line: %s", l)
 
-            text_output = " ".join(content_lines) if content_lines else out.strip()
+            # Extract generated response text cleanly
+            raw_text = out
+            text_output = ""
+            for sep in ["<|im_start|>assistant", "<im_start>assistant", "Assistant:", "<start_of_turn>model", "[ASSISTANT]"]:
+                if sep in raw_text:
+                    text_output = raw_text.split(sep)[-1].strip()
+                    break
+
+            if not text_output:
+                lines = out.splitlines()
+                content_lines = []
+                start_capture = False
+                for line in lines:
+                    trimmed = line.strip()
+                    if trimmed.startswith(">"):
+                        start_capture = True
+                        continue
+                    if start_capture:
+                        if "[" in trimmed and "t/s" in trimmed:
+                            continue
+                        if trimmed.startswith("Exiting") or trimmed.startswith("main: image"):
+                            continue
+                        if trimmed:
+                            content_lines.append(trimmed)
+                text_output = "\n".join(content_lines) if content_lines else out.strip()
+
+            # Clean trailing and token tags without destroying punctuation
+            for tag in ["<|im_end|>", "<im_end>", "<|endoftext|>", "<|vision_start|>", "<|vision_end|>", "<|image_pad|>", "<end_of_turn>", "</s>"]:
+                text_output = text_output.replace(tag, "").strip()
+
             word_count = len(text_output.split())
 
+            # Determine truthful active backend based on real log telemetry from llama/ameva
+            if target_backend in ("vulkan", "auto", "gpu"):
+                actual_backend = "vulkan" if (vulkan_dev is not None or offload_info is not None) else "cpu (vulkan offload skipped)"
+            else:
+                actual_backend = "cpu"
+
             metrics = InferenceMetrics(
-                backend=target_backend,
+                backend=actual_backend,
                 model_id=self.manifest.model_id,
-                load_ms=None,
-                vision_ms=0.0,
-                decode_ms=round(total_ms, 2),
+                load_ms=round(load_ms, 2) if load_ms is not None else None,
+                vision_ms=round(prompt_eval_ms, 2) if prompt_eval_ms is not None else 0.0,
+                decode_ms=round(eval_ms if eval_ms is not None else total_ms, 2),
                 tokens_per_second=actual_tps,
                 peak_rss_mb=None
             )
+
+            hw_diag = []
+            if vulkan_dev:
+                hw_diag.append(f"[GPU Hardware] {vulkan_dev}")
+            if offload_info:
+                hw_diag.append(f"[Layer Offload] {offload_info}")
 
             return VLMResult(
                 text=text_output,
@@ -255,7 +313,7 @@ class SubprocessVLMRuntime:
                 output_tokens=None,
                 word_count=word_count,
                 metrics=metrics,
-                warnings=()
+                warnings=tuple(hw_diag)
             )
         finally:
             if os.path.exists(prompt_file):

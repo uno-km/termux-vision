@@ -55,10 +55,13 @@ def save_image(
     Saves an HWC uint8/float32 ndarray to file system.
     Default metadata='strip' securely discards EXIF GPS / sensitive device tags.
     """
+    if not isinstance(image, np.ndarray) or image.size == 0 or image.shape[0] == 0 or image.shape[1] == 0:
+        raise ValueError(f"Cannot save empty or zero-sized image array (shape: {getattr(image, 'shape', None)}).")
+
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
 
     if image.dtype != np.uint8:
-        if np.max(image) <= 1.0 and np.issubdtype(image.dtype, np.floating):
+        if np.issubdtype(image.dtype, np.floating) and np.max(image) <= 1.0:
             arr = (image * 255.0).clip(0, 255).astype(np.uint8)
         else:
             arr = image.clip(0, 255).astype(np.uint8)

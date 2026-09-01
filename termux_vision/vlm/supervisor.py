@@ -151,19 +151,22 @@ class SubprocessSupervisor:
             if self.process.poll() is None:
                 # 1. Close stdin to signal EOF
                 try:
-                    self.process.stdin.close()
-                except Exception:
-                    pass
+                    if self.process.stdin and not self.process.stdin.closed:
+                        self.process.stdin.close()
+                except Exception as e:
+                    logger.debug("[termux-vision:supervisor] Error closing stdin: %s", e)
 
                 # 2. Wait grace period
                 try:
                     self.process.wait(timeout=self.policy.shutdown_grace_s)
                 except subprocess.TimeoutExpired:
-                    # 3. SIGTERM on process group
+                    # 3. SIGTERM on process group or process
                     if os.name == "posix":
                         try:
-                            os.killpg(self.process.pid, signal.SIGTERM)
-                        except Exception:
+                            pgid = os.getpgid(self.process.pid)
+                            os.killpg(pgid, signal.SIGTERM)
+                        except Exception as e:
+                            logger.debug("[termux-vision:supervisor] killpg SIGTERM fallback to terminate: %s", e)
                             self.process.terminate()
                     else:
                         self.process.terminate()
@@ -174,12 +177,14 @@ class SubprocessSupervisor:
                     except subprocess.TimeoutExpired:
                         if os.name == "posix":
                             try:
-                                os.killpg(self.process.pid, signal.SIGKILL)
-                            except Exception:
+                                pgid = os.getpgid(self.process.pid)
+                                os.killpg(pgid, signal.SIGKILL)
+                            except Exception as e:
+                                logger.debug("[termux-vision:supervisor] killpg SIGKILL fallback to kill: %s", e)
                                 self.process.kill()
                         else:
                             self.process.kill()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("[termux-vision:supervisor] Process shutdown note: %s", e)
         finally:
             self.process = None

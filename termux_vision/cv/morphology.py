@@ -19,8 +19,11 @@ def dilate(binary_image: np.ndarray, kernel: np.ndarray = None, iterations: int 
             from ..csrc.backend import has_c_backend, c_morphology
             if has_c_backend():
                 return c_morphology(binary_image, is_dilate=True)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("termux_vision.cv.morphology").debug(
+                "[termux-vision] C dilate failed, falling back to NumPy: %s", e
+            )
 
     if kernel is None:
         kernel = structuring_element("rect", 3)
@@ -43,8 +46,11 @@ def erode(binary_image: np.ndarray, kernel: np.ndarray = None, iterations: int =
             from ..csrc.backend import has_c_backend, c_morphology
             if has_c_backend():
                 return c_morphology(binary_image, is_dilate=False)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("termux_vision.cv.morphology").debug(
+                "[termux-vision] C erode failed, falling back to NumPy: %s", e
+            )
 
     if kernel is None:
         kernel = structuring_element("rect", 3)

@@ -3,21 +3,39 @@ import numpy as np
 from .conv_block import DepthwiseSeparableConv2D
 from .yolo_post import YOLODecoder
 
+COCO_80_CLASSES: List[str] = [
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
+    "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange",
+    "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed",
+    "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven",
+    "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+]
+
 class TinyYOLONanoDetector:
     """
     Ultra-lightweight On-Device Object Detector (YOLO-Nano architecture) with Depthwise Separable Convolutions.
     """
-    def __init__(self, num_classes: int = 80, class_names: List[str] = None):
-        self.num_classes = num_classes
-        self.class_names = class_names or ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light"]
+    def __init__(self, num_classes: int = 80, class_names: List[str] = None, weights: dict = None):
+        self.class_names = list(class_names) if class_names is not None else list(COCO_80_CLASSES[:num_classes])
+        self.num_classes = len(self.class_names)
         # Lightweight Mobile Backbone
-        self.conv1 = DepthwiseSeparableConv2D(3, 16, kernel_size=3, stride=2)
-        self.conv2 = DepthwiseSeparableConv2D(16, 32, kernel_size=3, stride=2)
-        self.conv3 = DepthwiseSeparableConv2D(32, 64, kernel_size=3, stride=2)
+        self.conv1 = DepthwiseSeparableConv2D(3, 16, kernel_size=3, stride=2, weights=weights.get("conv1") if weights else None)
+        self.conv2 = DepthwiseSeparableConv2D(16, 32, kernel_size=3, stride=2, weights=weights.get("conv2") if weights else None)
+        self.conv3 = DepthwiseSeparableConv2D(32, 64, kernel_size=3, stride=2, weights=weights.get("conv3") if weights else None)
         
         # Detection Head: (cx, cy, w, h) + num_classes
-        self.head = DepthwiseSeparableConv2D(64, 4 + len(self.class_names), kernel_size=1, stride=1)
+        self.head = DepthwiseSeparableConv2D(64, 4 + self.num_classes, kernel_size=1, stride=1, weights=weights.get("head") if weights else None)
         self.decoder = YOLODecoder(class_names=self.class_names, conf_threshold=0.25, iou_threshold=0.45)
+
+    def load_weights(self, weights: dict):
+        """Loads trained weights dictionary for backbone and detection head."""
+        if "conv1" in weights: self.conv1 = DepthwiseSeparableConv2D(3, 16, 3, 2, weights=weights["conv1"])
+        if "conv2" in weights: self.conv2 = DepthwiseSeparableConv2D(16, 32, 3, 2, weights=weights["conv2"])
+        if "conv3" in weights: self.conv3 = DepthwiseSeparableConv2D(32, 64, 3, 2, weights=weights["conv3"])
+        if "head" in weights: self.head = DepthwiseSeparableConv2D(64, 4 + len(self.class_names), 1, 1, weights=weights["head"])
 
     def detect(self, image: np.ndarray) -> List[Dict]:
         """

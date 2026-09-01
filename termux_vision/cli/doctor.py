@@ -6,6 +6,7 @@ import subprocess
 import json
 import time
 from typing import Dict, Any, Optional
+from .. import __version__
 from ..vlm.cache import ModelCacheManager
 
 def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str, Any]:
@@ -19,8 +20,8 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
 
     report = {
         "schema_version": 1,
-        "client_version": "0.2.0-alpha.1",
-        "runtime_version": "0.2.0-alpha.1",
+        "client_version": __version__,
+        "runtime_version": __version__,
         "platform": {
             "system": platform.system(),
             "machine": platform.machine(),
@@ -60,16 +61,34 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
     except Exception:
         pass
 
-    # Truthful Vulkan status
+    # Truthful Vulkan status via ameva-vulkan-runtime integration
     if probe_vulkan:
-        if report["vulkan"]["loader_detected"] and report["vulkan"]["driver_file_detected"]:
-            report["vulkan"]["status"] = "driver_detected_experimental"
-            report["vulkan"]["safe_for_vlm"] = None
-            report["vulkan"]["note"] = "Hardware driver present. GPU compute available via --device vulkan or auto mode."
-        else:
-            report["vulkan"]["status"] = "disabled"
-            report["vulkan"]["safe_for_vlm"] = False
-            report["vulkan"]["note"] = "Vulkan hardware driver or loader library missing. Use CPU mode (--device cpu)."
+        try:
+            import ameva_vulkan_runtime as avr
+            if hasattr(avr, "doctor") and callable(avr.doctor):
+                avr_diag = avr.doctor(full_probe=True)
+            elif hasattr(avr, "doctor") and hasattr(avr.doctor, "run_doctor") and callable(avr.doctor.run_doctor):
+                avr_diag = avr.doctor.run_doctor(probe_gpu=True)
+            elif hasattr(avr, "run_doctor") and callable(avr.run_doctor):
+                avr_diag = avr.run_doctor(probe_gpu=True)
+            else:
+                avr_diag = {}
+            report["vulkan"]["ameva_runtime_detected"] = True
+            is_avail = bool(avr.is_available()) if hasattr(avr, "is_available") and callable(avr.is_available) else False
+            report["vulkan"]["status"] = "driver_detected_experimental" if is_avail else "disabled"
+            dev_name = avr.get_device_name() if hasattr(avr, "get_device_name") and callable(avr.get_device_name) else "Vulkan GPU"
+            report["vulkan"]["device_name"] = dev_name
+            report["vulkan"]["note"] = "Hardware driver inspected via official ameva-vulkan-runtime bridge."
+        except ImportError:
+            report["vulkan"]["ameva_runtime_detected"] = False
+            if report["vulkan"]["loader_detected"] and report["vulkan"]["driver_file_detected"]:
+                report["vulkan"]["status"] = "driver_detected_experimental"
+                report["vulkan"]["safe_for_vlm"] = None
+                report["vulkan"]["note"] = "Hardware driver present. Install ameva-vulkan-runtime for optimized GPU compute shaders."
+            else:
+                report["vulkan"]["status"] = "disabled"
+                report["vulkan"]["safe_for_vlm"] = False
+                report["vulkan"]["note"] = "Vulkan hardware driver or loader missing. Operating on CPU reference pipeline."
 
     # Model count and Actual Full SHA-256 check
     installed = cache_mgr.list_installed()

@@ -86,20 +86,25 @@ def laplacian(image: np.ndarray) -> np.ndarray:
     return conv2d_same(gray, kernel)
 
 def canny(image: np.ndarray, low_threshold: float = 50.0, high_threshold: float = 150.0,
-          blur_size: int = 5, sigma: float = 1.4) -> np.ndarray:
+          blur_size: int = 5, sigma: float = 1.4, device: str = "auto") -> np.ndarray:
     """
     Full 5-stage Canny Edge Detector:
-    Uses compiled C kernel when available (100x acceleration), falls back to pure NumPy.
+    Uses Vulkan GPU / compiled C kernel when available (100x acceleration), falls back to pure NumPy.
     """
     gray = to_grayscale(image)
 
-    # 1. Accelerated C Path
+    # 1. Accelerated Vulkan / C Path
     try:
-        from ..csrc.backend import has_c_backend, c_canny
-        if has_c_backend():
-            return c_canny(gray, low_threshold=low_threshold, high_threshold=high_threshold)
-    except Exception:
-        pass
+        from ..csrc.backend import has_c_backend, has_vulkan_backend, c_canny
+        if has_vulkan_backend() or has_c_backend() or str(device).lower().strip() in ("vulkan", "gpu"):
+            return c_canny(gray, low_threshold=low_threshold, high_threshold=high_threshold, device=device)
+    except Exception as e:
+        if str(device).lower().strip() in ("vulkan", "gpu"):
+            raise e
+        import logging
+        logging.getLogger("termux_vision.cv.filters").debug(
+            "[termux-vision] C/Vulkan backend dispatch failed, falling back to NumPy: %s", e
+        )
 
     # 2. Pure NumPy Path
     blurred = gaussian_blur(gray, size=blur_size, sigma=sigma)

@@ -7,14 +7,21 @@ class MobileNetV3FeatureExtractor:
     Constructs a stacked depthwise separable convolution architecture.
     (Note: Prototype uses initialized structural weights; downstream production models load trained weights).
     """
-    def __init__(self, in_channels: int = 3, feature_dim: int = 512):
+    def __init__(self, in_channels: int = 3, feature_dim: int = 512, weights: dict = None):
         self.in_channels = in_channels
         self.feature_dim = feature_dim
         
-        self.block1 = DepthwiseSeparableConv2D(in_channels=in_channels, out_channels=32, kernel_size=3, stride=2)
-        self.block2 = DepthwiseSeparableConv2D(in_channels=32, out_channels=64, kernel_size=3, stride=2)
-        self.block3 = DepthwiseSeparableConv2D(in_channels=64, out_channels=128, kernel_size=3, stride=2)
-        self.block4 = DepthwiseSeparableConv2D(in_channels=128, out_channels=feature_dim, kernel_size=3, stride=2)
+        self.block1 = DepthwiseSeparableConv2D(in_channels=in_channels, out_channels=32, kernel_size=3, stride=2, weights=weights.get("block1") if weights else None)
+        self.block2 = DepthwiseSeparableConv2D(in_channels=32, out_channels=64, kernel_size=3, stride=2, weights=weights.get("block2") if weights else None)
+        self.block3 = DepthwiseSeparableConv2D(in_channels=64, out_channels=128, kernel_size=3, stride=2, weights=weights.get("block3") if weights else None)
+        self.block4 = DepthwiseSeparableConv2D(in_channels=128, out_channels=feature_dim, kernel_size=3, stride=2, weights=weights.get("block4") if weights else None)
+
+    def load_weights(self, weights: dict):
+        """Loads trained weights dictionary for all convolutional blocks."""
+        if "block1" in weights: self.block1 = DepthwiseSeparableConv2D(self.in_channels, 32, 3, 2, weights=weights["block1"])
+        if "block2" in weights: self.block2 = DepthwiseSeparableConv2D(32, 64, 3, 2, weights=weights["block2"])
+        if "block3" in weights: self.block3 = DepthwiseSeparableConv2D(64, 128, 3, 2, weights=weights["block3"])
+        if "block4" in weights: self.block4 = DepthwiseSeparableConv2D(128, self.feature_dim, 3, 2, weights=weights["block4"])
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         return self.forward(x)

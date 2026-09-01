@@ -42,6 +42,9 @@ def resize(image: np.ndarray, size: tuple, interpolation: str = "bilinear") -> n
     Resize image array to (width, height) using PIL acceleration.
     size: (width, height) or integer for square resize.
     """
+    if not isinstance(image, np.ndarray) or image.size == 0 or image.shape[0] == 0 or image.shape[1] == 0:
+        raise ValueError(f"Cannot resize empty or zero-sized image array (shape: {getattr(image, 'shape', None)}).")
+
     if isinstance(size, int):
         target_w, target_h = size, size
     else:

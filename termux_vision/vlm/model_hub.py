@@ -49,7 +49,7 @@ def download_file_stream(url: str, dest: str, progress_callback=None) -> str:
         res = subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if res.returncode != 0 or not os.path.exists(partial_dest) or os.path.getsize(partial_dest) == 0:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (termux-vision)"})
-            with urllib.request.urlopen(req) as resp, open(partial_dest, "wb") as f:
+            with urllib.request.urlopen(req, timeout=30) as resp, open(partial_dest, "wb") as f:
                 total = int(resp.info().get("Content-Length", 0))
                 downloaded = 0
                 while True:

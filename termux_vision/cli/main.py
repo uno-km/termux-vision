@@ -179,6 +179,8 @@ def main():
     p_vlm.add_argument("--frequency-penalty", type=float, default=None, help="Frequency penalty")
     p_vlm.add_argument("--seed", type=int, default=None, help="Random RNG seed")
     p_vlm.add_argument("--system-prompt", default=None, help="System prompt context")
+    p_vlm.add_argument("-q", "--quality", choices=["original", "high", "optimal", "fast"], default="optimal", help="Image quality scaling preset (original: raw 1:1, high: 1280px, optimal: 768px, fast: 384px)")
+    p_vlm.add_argument("--max-dim", type=int, default=None, help="Explicit maximum image dimension in pixels (aspect ratio preserved)")
     p_vlm.add_argument("--ngl", type=int, default=None, help="Number of GPU offload layers")
     p_vlm.add_argument("--json", action="store_true", help="Output full result and metrics in JSON format")
 
@@ -326,7 +328,9 @@ def main():
                     presence_penalty=args.presence_penalty,
                     frequency_penalty=args.frequency_penalty,
                     seed=args.seed,
-                    system_prompt=args.system_prompt
+                    system_prompt=args.system_prompt,
+                    quality=args.quality,
+                    max_dim=args.max_dim
                 )
                 if args.json:
                     print(json.dumps(res.to_dict(), indent=2, ensure_ascii=False))

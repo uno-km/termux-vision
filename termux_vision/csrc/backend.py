@@ -109,6 +109,26 @@ def _setup_signatures(lib):
 def has_c_backend() -> bool:
     return _load_c_backend() is not None
 
+def _ensure_2d_uint8(arr: np.ndarray) -> np.ndarray:
+    if not isinstance(arr, np.ndarray):
+        arr = np.asarray(arr)
+    if arr.ndim == 3:
+        # Standard luminance conversion if RGB/BGR
+        if arr.shape[2] in (3, 4):
+            arr = np.dot(arr[..., :3], [0.2989, 0.5870, 0.1140])
+        elif arr.shape[2] == 1:
+            arr = arr[:, :, 0]
+    elif arr.ndim != 2:
+        raise ValueError(f"Expected 2D grayscale image array, received array with shape {arr.shape}")
+    
+    if np.issubdtype(arr.dtype, np.floating):
+        if arr.max() <= 1.0 and arr.size > 0:
+            arr = arr * 255.0
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+    elif arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+    return np.ascontiguousarray(arr, dtype=np.uint8)
+
 def c_compute_integral(src_uint8: np.ndarray) -> np.ndarray:
     lib = _load_c_backend()
     if lib is None:
@@ -118,9 +138,9 @@ def c_compute_integral(src_uint8: np.ndarray) -> np.ndarray:
             f"[Action Recommendation] Please compile libfast_cv.so via clang: clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm"
         )
     
-    h, w = src_uint8.shape
+    src_cont = _ensure_2d_uint8(src_uint8)
+    h, w = src_cont.shape
     dst = np.zeros((h + 1, w + 1), dtype=np.float64)
-    src_cont = np.ascontiguousarray(src_uint8, dtype=np.uint8)
 
     src_ptr = src_cont.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
     dst_ptr = dst.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
@@ -137,10 +157,10 @@ def c_sobel(src_uint8: np.ndarray):
             f"[Action Recommendation] Please compile libfast_cv.so via clang: clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm"
         )
 
-    h, w = src_uint8.shape
+    src_cont = _ensure_2d_uint8(src_uint8)
+    h, w = src_cont.shape
     mag = np.zeros((h, w), dtype=np.float32)
     angle = np.zeros((h, w), dtype=np.float32)
-    src_cont = np.ascontiguousarray(src_uint8, dtype=np.uint8)
 
     src_ptr = src_cont.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
     mag_ptr = mag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -149,43 +169,40 @@ def c_sobel(src_uint8: np.ndarray):
     lib.sobel_c(src_ptr, mag_ptr, angle_ptr, w, h)
     return mag, angle
 
-_vk_lib = None
-_vk_lib_path = None
-_vk_backend_load_errors = {}
+_cpp_lib = None
+_cpp_lib_path = None
+_cpp_backend_load_errors = {}
 
-def _load_vulkan_backend():
-    global _vk_lib, _vk_lib_path
-    if _vk_lib is not None:
-        return _vk_lib
+def _load_cpp_backend():
+    global _cpp_lib, _cpp_lib_path
+    if _cpp_lib is not None:
+        return _cpp_lib
 
     with _backend_lock:
-        if _vk_lib is not None:
-            return _vk_lib
+        if _cpp_lib is not None:
+            return _cpp_lib
 
         dir_path = os.path.dirname(os.path.abspath(__file__))
         candidates = [
-            os.path.join(dir_path, "libfast_cv_vk.so"),
-            os.path.join(dir_path, "fast_cv_vk.so"),
-            os.path.join(dir_path, "..", "libfast_cv_vk.so"),
-            os.path.expanduser("~/.local/lib/libfast_cv_vk.so"),
-            "/data/data/com.termux/files/usr/lib/libfast_cv_vk.so"
+            os.path.join(dir_path, "libfast_cv_engine.so"),
+            os.path.join(dir_path, "fast_cv_engine.so"),
+            os.path.join(dir_path, "libfast_cv_engine.dll"),
+            os.path.join(dir_path, "fast_cv_engine.dll"),
+            os.path.join(dir_path, "libfast_cv_engine.dylib"),
+            os.path.join(dir_path, "..", "libfast_cv_engine.so"),
+            os.path.join(dir_path, "..", "libfast_cv_engine.dll"),
+            os.path.expanduser("~/.local/lib/libfast_cv_engine.so"),
+            "/data/data/com.termux/files/usr/lib/libfast_cv_engine.so"
         ]
 
         for p in candidates:
             if not os.path.exists(p):
-                _vk_backend_load_errors[p] = "File not found"
+                _cpp_backend_load_errors[p] = "File not found"
                 continue
 
             try:
-                vk = ctypes.CDLL(p)
-                # setup signatures
-                vk.vk_is_available.argtypes = []
-                vk.vk_is_available.restype = ctypes.c_int
-                
-                vk.vk_get_device_name.argtypes = []
-                vk.vk_get_device_name.restype = ctypes.c_char_p
-
-                vk.vk_canny_c.argtypes = [
+                cpp = ctypes.CDLL(p)
+                cpp.fast_canny_cpp.argtypes = [
                     ctypes.POINTER(ctypes.c_uint8),
                     ctypes.POINTER(ctypes.c_uint8),
                     ctypes.c_int,
@@ -193,9 +210,9 @@ def _load_vulkan_backend():
                     ctypes.c_float,
                     ctypes.c_float
                 ]
-                vk.vk_canny_c.restype = ctypes.c_int
+                cpp.fast_canny_cpp.restype = ctypes.c_int
 
-                vk.vk_scale_c.argtypes = [
+                cpp.fast_scale_cpp.argtypes = [
                     ctypes.POINTER(ctypes.c_uint8),
                     ctypes.POINTER(ctypes.c_uint8),
                     ctypes.c_int,
@@ -204,46 +221,51 @@ def _load_vulkan_backend():
                     ctypes.c_int,
                     ctypes.c_int
                 ]
-                vk.vk_scale_c.restype = ctypes.c_int
+                cpp.fast_scale_cpp.restype = ctypes.c_int
 
-                _vk_lib = vk
-                _vk_lib_path = p
-                return _vk_lib
+                if hasattr(cpp, "fast_cv_cleanup_context"):
+                    cpp.fast_cv_cleanup_context.argtypes = []
+                    cpp.fast_cv_cleanup_context.restype = None
+
+                _cpp_lib = cpp
+                _cpp_lib_path = p
+                return _cpp_lib
             except Exception as e:
-                _vk_backend_load_errors[p] = f"{type(e).__name__}: {e}"
+                _cpp_backend_load_errors[p] = f"{type(e).__name__}: {e}"
                 import logging
                 logging.getLogger("termux_vision.csrc.backend").warning(
-                    "[termux-vision] Vulkan backend dlopen failed at '%s': %s", p, e
+                    "[termux-vision] Native C++ backend dlopen failed at '%s': %s", p, e
                 )
 
         return None
 
+def cleanup_native_context() -> None:
+    """Explicitly releases native C++ scratch buffers."""
+    global _cpp_lib
+    if _cpp_lib is not None and hasattr(_cpp_lib, "fast_cv_cleanup_context"):
+        try:
+            _cpp_lib.fast_cv_cleanup_context()
+        except Exception:
+            pass
+
+import atexit
+atexit.register(cleanup_native_context)
+
 def has_vulkan_backend() -> bool:
-    lib = _load_vulkan_backend()
-    if lib is None:
-        return False
+    """Inspects Vulkan availability via official ameva-vulkan-runtime bridge."""
     try:
-        return bool(lib.vk_is_available())
-    except Exception as e:
-        import logging
-        logging.getLogger("termux_vision.csrc.backend").warning(
-            "[termux-vision] vk_is_available check failed: %s", e
-        )
+        import ameva_vulkan_runtime as avr
+        return bool(avr.is_available())
+    except ImportError:
         return False
 
 def get_vulkan_device_name() -> str:
-    lib = _load_vulkan_backend()
-    if lib is None:
-        return "None"
+    """Returns physical Vulkan GPU device name via official ameva-vulkan-runtime bridge."""
     try:
-        name = lib.vk_get_device_name()
-        return name.decode('utf-8') if isinstance(name, bytes) else str(name)
-    except Exception as e:
-        import logging
-        logging.getLogger("termux_vision.csrc.backend").warning(
-            "[termux-vision] vk_get_device_name failed: %s", e
-        )
-        return "None"
+        import ameva_vulkan_runtime as avr
+        return avr.get_device_name() or "Vulkan GPU Device (via ameva-vulkan-runtime)"
+    except ImportError:
+        return "None (CPU Pipeline Only; Install ameva-vulkan-runtime for GPU acceleration)"
 
 def c_canny(
     src_uint8: np.ndarray, 
@@ -252,42 +274,32 @@ def c_canny(
     device: str = "auto"
 ) -> np.ndarray:
     dev = (device or "auto").lower().strip()
-    h, w = src_uint8.shape
+    src_cont = _ensure_2d_uint8(src_uint8)
+    h, w = src_cont.shape
 
-    # 1. Try Vulkan acceleration if requested
-    if dev in ("auto", "vulkan", "gpu"):
-        vk_lib = _load_vulkan_backend()
-        if vk_lib is not None and has_vulkan_backend():
-            dst = np.zeros((h, w), dtype=np.uint8)
-            src_cont = np.ascontiguousarray(src_uint8, dtype=np.uint8)
-            src_ptr = src_cont.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
-            dst_ptr = dst.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
-
-            ok = vk_lib.vk_canny_c(src_ptr, dst_ptr, w, h, float(low_threshold), float(high_threshold))
-            if ok:
-                return dst
-            elif dev in ("vulkan", "gpu"):
-                from ..errors import VulkanNotAvailableError
-                raise VulkanNotAvailableError(
-                    reason="Vulkan Canny execution kernel returned error code.\n"
-                           "[Action Required] Explicit GPU mode cannot proceed. Please switch to CPU mode:\n"
-                           "  Python API: device='cpu'\n"
-                           "  CLI: --device cpu\n"
-                           "Or use automatic detection: device='auto'"
-                )
-        elif dev in ("vulkan", "gpu"):
+    # 1. Fail-Fast: termux-vision delegates Vulkan GPU compute to ameva-vulkan-runtime
+    if dev in ("vulkan", "gpu"):
+        if not has_vulkan_backend():
             from ..errors import VulkanNotAvailableError
-            err_details = "\n".join(f"  - {path}: {err}" for path, err in _vk_backend_load_errors.items())
             raise VulkanNotAvailableError(
-                reason=f"Vulkan GPU acceleration is unavailable or libfast_cv_vk.so is not loaded.\n"
-                       f"Candidate search details:\n{err_details}\n"
-                       f"[Action Required] Explicit GPU mode cannot proceed. Please switch to CPU mode:\n"
-                       f"  Python API: device='cpu'\n"
-                       f"  CLI: --device cpu\n"
-                       f"Or use automatic detection: device='auto'"
+                reason="Native Vulkan GPU acceleration is managed via 'ameva-vulkan-runtime'.\n"
+                       "[Action Required] ameva-vulkan-runtime is not installed or no Vulkan GPU driver was detected.\n"
+                       "  - Install official runtime: pip install ameva-vulkan-runtime\n"
+                       "  - Or switch to CPU mode: device='cpu' / --device cpu"
             )
 
-    # 2. Fallback to high-speed C Backend (Graceful Fallback)
+    # 2. Fast Native Vectorized C++ Engine
+    cpp_lib = _load_cpp_backend()
+    if cpp_lib is not None:
+        dst = np.zeros((h, w), dtype=np.uint8)
+        src_ptr = src_cont.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
+        dst_ptr = dst.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
+
+        ok = cpp_lib.fast_canny_cpp(src_ptr, dst_ptr, w, h, float(low_threshold), float(high_threshold))
+        if ok:
+            return dst
+
+    # 3. High-speed C Backend (Standard Fallback)
     lib = _load_c_backend()
     if lib is None:
         err_msg = "\n".join(f"  - {path}: {err}" for path, err in _c_backend_load_errors.items())
@@ -296,13 +308,13 @@ def c_canny(
             f"[Action Recommendation] Please compile libfast_cv.so via clang: clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm"
         )
 
-    mag, angle = c_sobel(src_uint8)
+    mag, angle = c_sobel(src_cont)
     dst = np.zeros((h, w), dtype=np.uint8)
     mag_ptr = mag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     angle_ptr = angle.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     dst_ptr = dst.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
 
-    lib.canny_nms_threshold_c(mag_ptr, angle_ptr, dst_ptr, w, h, low_threshold, high_threshold)
+    lib.canny_nms_threshold_c(mag_ptr, angle_ptr, dst_ptr, w, h, float(low_threshold), float(high_threshold))
     return dst
 
 def c_morphology(src_uint8: np.ndarray, is_dilate: bool = True) -> np.ndarray:
@@ -313,9 +325,9 @@ def c_morphology(src_uint8: np.ndarray, is_dilate: bool = True) -> np.ndarray:
             f"Native C backend is not available.\nSearched candidate paths:\n{err_msg}"
         )
 
-    h, w = src_uint8.shape
+    src_cont = _ensure_2d_uint8(src_uint8)
+    h, w = src_cont.shape
     dst = np.zeros((h, w), dtype=np.uint8)
-    src_cont = np.ascontiguousarray(src_uint8, dtype=np.uint8)
 
     src_ptr = src_cont.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
     dst_ptr = dst.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))

@@ -43,6 +43,7 @@ termux_vision/models/yolo_post.py
 termux_vision/transforms/__init__.py
 termux_vision/transforms/compose.py
 termux_vision/transforms/functional.py
+termux_vision/transforms/scale.py
 termux_vision/vlm/__init__.py
 termux_vision/vlm/api.py
 termux_vision/vlm/cache.py
@@ -60,6 +61,7 @@ termux_vision/vlm/adapters/qwen2vl.py
 termux_vision/vlm/adapters/smolvlm.py
 termux_vision/vlm/runtime/resolver.py
 termux_vision/vlm/runtime/subprocess.py
+tests/test_adversarial_sniper_audit.py
 tests/test_audit_scorecard.py
 tests/test_boundary_security.py
 tests/test_cv_filters.py

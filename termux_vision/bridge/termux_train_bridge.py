@@ -8,13 +8,14 @@ def to_termux_tensor(data, requires_grad: bool = False):
     try:
         import termux_train as tt
         if isinstance(data, np.ndarray):
-            return tt.Tensor(data.tolist(), requires_grad=requires_grad)
+            # Direct flat C-buffer pass without .tolist() to eliminate 8x memory expansion and LMK kills
+            return tt.Tensor(data, dtype="float32", requires_grad=requires_grad)
         elif isinstance(data, (list, tuple)):
-            return tt.Tensor(data, requires_grad=requires_grad)
-        elif hasattr(data, "to_list"):
-            return tt.Tensor(data.to_list(), requires_grad=requires_grad)
+            return tt.Tensor(data, dtype="float32", requires_grad=requires_grad)
+        elif hasattr(data, "to_numpy"):
+            return tt.Tensor(data.to_numpy(), dtype="float32", requires_grad=requires_grad)
         else:
-            return tt.Tensor(data, requires_grad=requires_grad)
+            return tt.Tensor(data, dtype="float32", requires_grad=requires_grad)
     except ImportError:
         # Fallback if termux-train is not installed in current environment
         class StandaloneVisionTensor:

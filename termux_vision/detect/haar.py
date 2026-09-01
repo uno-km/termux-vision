@@ -41,9 +41,9 @@ class HaarCascadeDetector:
     Heuristic 3-Stage Face-Like Region Scanner.
     Scans integral image using hand-tuned multi-rectangle brightness contrast features.
     """
-    def __init__(self, base_window_size: Tuple[int, int] = (24, 24)):
+    def __init__(self, base_window_size: Tuple[int, int] = (24, 24), stages: List[CascadeStage] = None):
         self.base_w, self.base_h = base_window_size
-        self.stages = self._build_default_face_stages()
+        self.stages = stages if stages is not None else self._build_default_face_stages()
 
     def _build_default_face_stages(self) -> List[CascadeStage]:
         stages = []
@@ -89,8 +89,11 @@ class HaarCascadeDetector:
                     bboxes = [BoundingBox.from_xywh(c_boxes[i][0], c_boxes[i][1], c_boxes[i][2], c_boxes[i][3]) for i in keep]
                     return bboxes[:max_results]
                 return []
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("termux_vision.detect.haar").debug(
+                "[termux-vision] C haar_detect failed, falling back to NumPy: %s", e
+            )
 
         # 2. Pure NumPy Path
         candidates = []
@@ -137,6 +140,34 @@ def detect_faces(
     Scans for face-like contrast candidate regions using heuristic Haar cascade rules.
     Returns lightweight Detection objects with bounding boxes.
     """
+    h, w = image.shape[:2]
+    max_dim = max(h, w)
+    
+    # Scale down for large images to maintain responsive latency on Termux mobile CPUs
+    if max_dim > 640:
+        ratio = 640.0 / max_dim
+        new_w = max(32, int(w * ratio))
+        new_h = max(32, int(h * ratio))
+        from ..transforms.functional import resize
+        scaled_img = resize(image, (new_w, new_h))
+        scaled_min_size = (max(16, int(min_size[0] * ratio)), max(16, int(min_size[1] * ratio)))
+        
+        detector = HaarCascadeDetector()
+        bboxes = detector.detect_multiscale(scaled_img, scale_factor=scale_factor, min_size=scaled_min_size, max_results=max_results)
+        
+        # Scale back to original coordinates
+        inv_ratio = 1.0 / ratio
+        restored = []
+        for b in bboxes:
+            orig_bbox = BoundingBox(
+                left=int(round(b.left * inv_ratio)),
+                top=int(round(b.top * inv_ratio)),
+                right=min(w, int(round(b.right * inv_ratio))),
+                bottom=min(h, int(round(b.bottom * inv_ratio)))
+            )
+            restored.append(Detection(bbox=orig_bbox, score=None, class_name="face_candidate"))
+        return restored
+
     detector = HaarCascadeDetector()
     bboxes = detector.detect_multiscale(image, scale_factor=scale_factor, min_size=min_size, max_results=max_results)
     return [Detection(bbox=b, score=None, class_name="face_candidate") for b in bboxes]

@@ -41,10 +41,20 @@ def save_safetensors(tensors_dict: dict, file_path: str):
         f.write(header_json)
         f.write(buffer_bytes)
 
+MAX_SAFETENSORS_HEADER_BYTES = 32 * 1024 * 1024  # 32 MB maximum header
+
 def load_safetensors(file_path: str) -> dict:
     """
-    Load SafeTensors file into dictionary of NumPy arrays.
+    Load SafeTensors file into dictionary of NumPy arrays with strict security validation.
     """
+    import os
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"SafeTensors file not found: {file_path}")
+
+    file_size = os.path.getsize(file_path)
+    if file_size < 8:
+        raise ValueError(f"Invalid SafeTensors file: size ({file_size} bytes) is less than 8-byte header length.")
+
     dtype_inv_map = {
         "F32": np.float32,
         "F64": np.float64,
@@ -56,6 +66,12 @@ def load_safetensors(file_path: str) -> dict:
     with open(file_path, "rb") as f:
         header_len_bytes = f.read(8)
         header_len = struct.unpack("<Q", header_len_bytes)[0]
+        
+        if header_len > MAX_SAFETENSORS_HEADER_BYTES:
+            raise ValueError(f"SafeTensors header length ({header_len} bytes) exceeds maximum safe limit ({MAX_SAFETENSORS_HEADER_BYTES} bytes).")
+        if 8 + header_len > file_size:
+            raise ValueError(f"SafeTensors header length ({header_len}) exceeds total file size ({file_size}).")
+
         header_json_bytes = f.read(header_len)
         header = json.loads(header_json_bytes.decode("utf-8"))
 
@@ -65,10 +81,14 @@ def load_safetensors(file_path: str) -> dict:
         for name, meta in header.items():
             if name == "__metadata__":
                 continue
-            np_dtype = dtype_inv_map.get(meta["dtype"], np.float32)
-            shape = meta["shape"]
-            start_off, end_off = meta["data_offsets"]
+            np_dtype = dtype_inv_map.get(meta.get("dtype"), np.float32)
+            shape = meta.get("shape", [])
+            data_offsets = meta.get("data_offsets", [0, 0])
+            start_off, end_off = data_offsets[0], data_offsets[1]
             
+            if start_off < 0 or end_off < start_off or (data_start + end_off) > file_size:
+                raise ValueError(f"Invalid tensor offsets for '{name}': [{start_off}, {end_off}] outside file bounds ({file_size}).")
+
             f.seek(data_start + start_off)
             raw = f.read(end_off - start_off)
             arr = np.frombuffer(raw, dtype=np_dtype).reshape(shape)

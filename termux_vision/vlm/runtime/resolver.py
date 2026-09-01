@@ -59,6 +59,28 @@ def resolve_llama_cli(
     environment = os.environ if env is None else env
     searched_paths: list[str] = []
 
+    # 0. termux_llamacpp Python SDK integration (Primary SSOT)
+    try:
+        import termux_llamacpp as tl
+        runtime = getattr(tl, "LlamaRuntime", None)
+        if runtime is None and hasattr(tl, "engine"):
+            runtime = getattr(tl.engine, "LlamaRuntime", None)
+        if runtime:
+            rt_inst = runtime()
+            cli_bin = rt_inst.get_binary_path("llama-cli") if hasattr(rt_inst, "get_binary_path") else None
+            if cli_bin and _is_executable_file(str(cli_bin)):
+                resolved = os.path.abspath(str(cli_bin))
+                return RuntimeInfo(
+                    executable=resolved,
+                    version=_get_runtime_version(resolved),
+                    source="termux-llamacpp-sdk",
+                )
+    except Exception as e:
+        import logging
+        logging.getLogger("termux_vision.vlm.resolver").debug(
+            "[termux-vision] termux_llamacpp SDK dynamic lookup skipped: %s", e
+        )
+
     # 1. Explicit path
     if explicit_path:
         expanded = os.path.abspath(os.path.expanduser(explicit_path))
@@ -100,13 +122,14 @@ def resolve_llama_cli(
             source="path",
         )
 
-    # 4. Known Termux / Linux paths
+    # 4. Known Termux / Linux paths (SSOT Standard)
     prefix = environment.get("PREFIX", "/data/data/com.termux/files/usr")
     candidates = (
+        os.path.expanduser("~/.termux-llama/current/bin/llama-cli"),
+        os.path.expanduser("~/.termux-llamacpp/current/bin/llama-cli"),
         os.path.join(prefix, "bin", "llama-cli"),
         os.path.join(prefix, "bin", "termux-llama-cli"),
         os.path.join(prefix, "bin", "llama-mtmd-cli"),
-        os.path.expanduser("~/.termux-llamacpp/current/bin/llama-cli"),
         os.path.expanduser("~/.local/bin/llama-cli"),
         os.path.expanduser("~/bin/llama-cli"),
     )

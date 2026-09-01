@@ -1,6 +1,6 @@
 {
   "name": "termux-vision",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Native On-Device Computer Vision & VLM Multimodal Inference Framework for Android Termux & ARM64 (Dual-Engine Python & Node.js/TypeScript)",
   "main": "index.js",
   "types": "index.d.ts",
@@ -48,6 +48,9 @@
   },
   "bugs": {
     "url": "https://github.com/uno-km/termux-vision/issues"
+  },
+  "dependencies": {
+    "ameva-vulkan-runtime": ">=1.0.0"
   },
   "engines": {
     "node": ">=16.0.0"

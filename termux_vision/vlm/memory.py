@@ -1,8 +1,11 @@
 import os
 import threading
+import logging
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
 from ..errors import InsufficientMemoryError, TermuxVisionError
+
+logger = logging.getLogger("termux_vision.vlm.memory")
 
 class ConcurrentEngineLimitError(TermuxVisionError):
     """Raised when multiple active VLM engines attempt concurrent instantiation."""
@@ -22,18 +25,37 @@ class MemoryEstimate:
     confidence: str  # "measured" | "calibrated" | "estimated"
 
 def get_system_ram_info() -> Dict[str, int]:
-    """Inspects total and available physical RAM in MB from /proc/meminfo."""
-    total_mb = 4096
-    avail_mb = 2048
-    try:
-        with open("/proc/meminfo", "r") as f:
-            for line in f:
-                if line.startswith("MemTotal:"):
-                    total_mb = int(line.split()[1]) // 1024
-                elif line.startswith("MemAvailable:"):
-                    avail_mb = int(line.split()[1]) // 1024
-    except Exception:
-        pass
+    """Inspects total and available physical RAM in MB from /proc/meminfo or system telemetry."""
+    total_mb = 0
+    avail_mb = 0
+
+    if os.path.exists("/proc/meminfo"):
+        try:
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        total_mb = int(line.split()[1]) // 1024
+                    elif line.startswith("MemAvailable:"):
+                        avail_mb = int(line.split()[1]) // 1024
+        except (OSError, ValueError, IndexError) as exc:
+            logger.debug("Failed reading /proc/meminfo: %s", exc)
+
+    if total_mb == 0:
+        try:
+            # POSIX sysconf fallback
+            if hasattr(os, "sysconf"):
+                pages = os.sysconf("SC_PHYS_PAGES")
+                page_size = os.sysconf("SC_PAGE_SIZE")
+                total_mb = (pages * page_size) // (1024 * 1024)
+                avail_mb = total_mb // 2
+        except Exception:
+            pass
+
+    if total_mb == 0:
+        # Default reasonable baseline if all probes fail
+        total_mb = 4096
+        avail_mb = 2048
+
     return {"total_mb": total_mb, "available_mb": avail_mb}
 
 def check_memory_admission(

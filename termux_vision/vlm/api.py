@@ -61,7 +61,9 @@ class VLMContext:
         frequency_penalty: Optional[float] = None,
         seed: Optional[int] = None,
         system_prompt: Optional[str] = None,
-        stop_tokens: Optional[Sequence[str]] = None
+        stop_tokens: Optional[Sequence[str]] = None,
+        quality: str = "optimal",
+        max_dim: Optional[int] = None
     ) -> VLMResult:
         if self._closed:
             raise RuntimeError("Cannot execute inference on closed VLMContext.")
@@ -87,32 +89,14 @@ class VLMContext:
         if repeat_penalty is not None and repeat_penalty < 0.0:
             raise ValueError(f"Parameter 'repeat_penalty' cannot be negative. Received: {repeat_penalty}")
 
-        default_prompt = "이 사진 속 인물의 표정, 옷차림, 자세, 그리고 배경 환경을 한국어로 간결하게 요약 설명해줘."
+        default_prompt = "Describe the contents, objects, and visual scene of this image in detail."
         actual_prompt = prompt if prompt is not None else default_prompt
         if not actual_prompt.strip():
             raise ValueError("Parameter 'prompt' cannot be an empty string.")
 
-        temp_path = None
-        if isinstance(image, str):
-            expanded_img = os.path.abspath(os.path.expanduser(image))
-            if not os.path.exists(expanded_img):
-                raise FileNotFoundError(f"Input image not found: '{expanded_img}'")
-            raw = load_image(expanded_img)
-            res = resize(raw, (self.manifest.preferred_resolution, self.manifest.preferred_resolution))
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                temp_path = tmp.name
-            save_image(res, temp_path, quality=90)
-            target_file = temp_path
-        elif isinstance(image, np.ndarray):
-            if image.size == 0:
-                raise ValueError("Input image NumPy array is empty (size 0).")
-            res = resize(image, (self.manifest.preferred_resolution, self.manifest.preferred_resolution))
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                temp_path = tmp.name
-            save_image(res, temp_path, quality=90)
-            target_file = temp_path
-        else:
-            raise ValueError(f"Unsupported image type: {type(image)}. Must be a file path string or NumPy ndarray.")
+        from ..transforms.scale import prepare_image_for_inference
+        target_file, is_temporary = prepare_image_for_inference(image, quality=quality, max_dim=max_dim)
+        temp_path = target_file if is_temporary else None
 
         try:
             result = self.runtime.execute(
@@ -237,7 +221,7 @@ def load(
             actual_backend = "vulkan"
             actual_fallback = False if fallback is None else fallback
         elif requested_device == "auto":
-            actual_backend = "vulkan"
+            actual_backend = "auto"
             actual_fallback = True if fallback is None else fallback
         else:
             actual_backend = "cpu"

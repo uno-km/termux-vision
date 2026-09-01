@@ -13,8 +13,11 @@ def compute_integral_image(image: np.ndarray) -> np.ndarray:
         from ..csrc.backend import has_c_backend, c_compute_integral
         if has_c_backend():
             return c_compute_integral(gray)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("termux_vision.cv.integral").debug(
+            "[termux-vision] C compute_integral failed, falling back to NumPy: %s", e
+        )
 
     # 2. Pure NumPy Path
     gray_f = gray.astype(np.float64)

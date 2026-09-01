@@ -136,15 +136,17 @@ class ModelCacheManager:
                 "Qwen2-VL-2B-Instruct-Q4_K_M.gguf",
                 "Qwen2-VL-2B-Instruct-vision-encoder.gguf",
             ]
-            if all(os.path.isfile(os.path.join(self.legacy_cache, name)) for name in expected):
+            if all(
+                os.path.isfile(os.path.join(self.legacy_cache, name))
+                and os.path.getsize(os.path.join(self.legacy_cache, name)) > 10_000_000
+                for name in expected
+            ):
                 return self.legacy_cache
-        return model_dir
-
     def get_state(self, model_id: str) -> ModelState:
         try:
             mdir = self.get_model_dir(model_id)
-        except ValueError:
-            return ModelState.ABSENT
+        except ValueError as e:
+            raise ModelCorruptedError(f"Invalid model_id or directory path structure for '{model_id}': {e}") from e
 
         if mdir == self.legacy_cache:
             return ModelState.READY
@@ -162,10 +164,13 @@ class ModelCacheManager:
         if os.path.exists(ready_marker) and os.path.exists(manifest_file):
             return ModelState.READY
 
-        # Check for custom/싸제 model directory (has *.gguf and mmproj*.gguf)
+        # Check for custom model directory (has *.gguf and mmproj*.gguf with valid sizes > 10MB)
         if os.path.isdir(mdir):
             files = os.listdir(mdir)
-            ggufs = [f for f in files if f.endswith(".gguf")]
+            ggufs = [
+                f for f in files
+                if f.endswith(".gguf") and os.path.getsize(os.path.join(mdir, f)) > 0
+            ]
             vision_ggufs = [f for f in ggufs if "mmproj" in f.lower() or "encoder" in f.lower() or "projector" in f.lower()]
             text_ggufs = [f for f in ggufs if f not in vision_ggufs]
             if not vision_ggufs and len(ggufs) >= 2:
@@ -373,7 +378,7 @@ class ModelCacheManager:
 
             try:
                 req = urllib.request.Request(art.download_url, headers={"User-Agent": "Mozilla/5.0 (termux-vision)"})
-                with urllib.request.urlopen(req) as resp, open(partial_file, "wb") as f:
+                with urllib.request.urlopen(req, timeout=30) as resp, open(partial_file, "wb") as f:
                     total = int(resp.info().get("Content-Length", 0))
                     downloaded = 0
                     while True:

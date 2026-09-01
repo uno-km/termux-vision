@@ -61,7 +61,7 @@ EXPORT void sobel_c(const unsigned char* src, float* mag, float* angle_deg, int 
     }
 }
 
-// Fast Canny NMS and Double Thresholding in C
+// Fast Canny NMS and Double Thresholding with Full 8-Connected Queue-based Hysteresis
 EXPORT void canny_nms_threshold_c(
     const float* mag, 
     const float* angle_deg, 
@@ -71,14 +71,19 @@ EXPORT void canny_nms_threshold_c(
     float low_thresh, 
     float high_thresh
 ) {
-    memset(dst, 0, width * height);
+    memset(dst, 0, (size_t)width * (size_t)height);
+
+    int total_pixels = width * height;
+    int* queue = (int*)malloc((size_t)total_pixels * sizeof(int));
+    int q_head = 0, q_tail = 0;
 
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
-            float c = mag[y * width + x];
+            int idx = y * width + x;
+            float c = mag[idx];
             if (c < low_thresh) continue;
 
-            float deg = angle_deg[y * width + x];
+            float deg = angle_deg[idx];
             float p1 = 0.0f, p2 = 0.0f;
 
             if ((deg >= 0.0f && deg < 22.5f) || (deg >= 157.5f && deg <= 180.0f)) {
@@ -97,36 +102,55 @@ EXPORT void canny_nms_threshold_c(
 
             if (c >= p1 && c >= p2) {
                 if (c >= high_thresh) {
-                    dst[y * width + x] = 255;
+                    dst[idx] = 255;
+                    if (queue) {
+                        queue[q_tail++] = idx;
+                    }
                 } else {
-                    dst[y * width + x] = 75;
+                    dst[idx] = 75; // Weak edge candidate
                 }
             }
         }
     }
 
-    // Hysteresis tracking
-    for (int y = 1; y < height - 1; y++) {
-        for (int x = 1; x < width - 1; x++) {
-            if (dst[y * width + x] == 75) {
-                int has_strong = 0;
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        if (dst[(y + dy) * width + (x + dx)] == 255) {
-                            has_strong = 1;
-                            break;
-                        }
+    // 8-Connected BFS Hysteresis tracking
+    if (queue) {
+        int dx[8] = {-1,  0,  1, -1, 1, -1, 0, 1};
+        int dy[8] = {-1, -1, -1,  0, 0,  1, 1, 1};
+
+        while (q_head < q_tail) {
+            int curr_idx = queue[q_head++];
+            int cx = curr_idx % width;
+            int cy = curr_idx / width;
+
+            for (int k = 0; k < 8; k++) {
+                int nx = cx + dx[k];
+                int ny = cy + dy[k];
+
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    int n_idx = ny * width + nx;
+                    if (dst[n_idx] == 75) {
+                        dst[n_idx] = 255; // Promote connected weak edge
+                        queue[q_tail++] = n_idx;
                     }
-                    if (has_strong) break;
                 }
-                dst[y * width + x] = has_strong ? 255 : 0;
             }
+        }
+        free(queue);
+    }
+
+    // Suppress remaining unconnected weak edges
+    for (int i = 0; i < total_pixels; i++) {
+        if (dst[i] == 75) {
+            dst[i] = 0;
         }
     }
 }
 
-// Fast Morphology Dilation and Erosion (3x3 Rectangular Element)
+// Fast Morphology Dilation and Erosion (3x3 Rectangular Element) with Zero-Init Border
 EXPORT void morphology_c(const unsigned char* src, unsigned char* dst, int width, int height, int is_dilate) {
+    memset(dst, 0, (size_t)width * (size_t)height);
+
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
             if (is_dilate) {

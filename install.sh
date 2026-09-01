@@ -26,15 +26,29 @@ else
 fi
 
 # 2. Python Toolchain Pre-provisioning
-echo "[3/5] Pre-provisioning Python build toolchains..."
+echo "[3/6] Pre-provisioning Python build toolchains..."
 pip install --upgrade pip setuptools wheel
 
-# 3. Python SDK Fast Installation (Bypass isolated build environment)
-echo "[4/5] Installing termux-vision Python SDK..."
+# 3. Provision Core Accelerators (termux-llamacpp & ameva-vulkan-runtime)
+echo "[4/7] Provisioning hardware runtimes (termux-llamacpp & ameva-vulkan-runtime)..."
+pip install ameva-vulkan-runtime || true
+if ! command -v llama-cli >/dev/null 2>&1 && [ ! -f "$HOME/.termux-llama/current/bin/llama-cli" ]; then
+    pip install termux-llamacpp && (termux-llama install || true) || echo "[*] Note: You can provision llama-cli later using: pip install termux-llamacpp && termux-llama install"
+fi
+
+# 4. Compile Native C & C++ CPU Acceleration Engines
+echo "[5/7] Compiling Native C & C++ Compute Engines..."
+if command -v clang >/dev/null 2>&1; then
+    clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm 2>/dev/null || true
+    clang++ -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv_engine.so termux_vision/csrc/fast_cv_engine.cpp 2>/dev/null || true
+fi
+
+# 5. Python SDK Fast Installation (Bypass isolated build environment)
+echo "[6/7] Installing termux-vision Python SDK..."
 pip install --no-build-isolation -e .
 
-# 4. Node.js Dual Engine CLI Installation
-echo "[5/5] Linking Node.js Dual Engine CLI..."
+# 6. Node.js Dual Engine CLI Installation
+echo "[7/7] Linking Node.js Dual Engine CLI..."
 if command -v npm >/dev/null 2>&1; then
     npm install -g . || npm link || true
 fi

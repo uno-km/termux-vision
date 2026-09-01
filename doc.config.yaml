@@ -1,0 +1,81 @@
+# doc.config.yaml - Termux-Vision Single Source of Truth
+name: "Termux-Vision"
+package_name_pypi: "termux-vision"
+package_name_npm: "termux-vision"
+version: "v1.1.0"
+release_name: "4-Tier Quality Presets & Vulkan Hardware Acceleration"
+license: "Apache-2.0"
+platform: "Android ARM64 / Termux Bionic"
+github_repo_url: "https://github.com/uno-km/termux-vision"
+
+tagline_ko: "안드로이드 Termux를 위한 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
+tagline_en: "Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine for Android Termux"
+
+why_challenge_en: "Standard vision frameworks like OpenCV and heavy Python runtimes fail on mobile Termux due to multi-gigabyte library sizes, missing GLIBC bindings, high latency, and severe thermal throttling during high-resolution vision encoding."
+why_challenge_ko: "기존 OpenCV, PyTorch 등 대규모 비전 프레임워크는 수 기가바이트의 거대한 의존성, GLIBC/Bionic 호환성 결여, 고해상도 비전 인코딩 시 발생하는 극심한 발열과 지연시간으로 인해 모바일 Termux 환경에서 원활히 동작하기 어렵습니다."
+
+description_en: "Eliminates heavy C++ dependencies by integrating SIMD NEON spatial image transforms with on-device VLM (Qwen2-VL, SmolVLM) multi-tier resolution presets (fast, optimal, high, original) and Vulkan GPU acceleration under strict memory isolation."
+description_ko: "순수 ARM64 NEON 가속 커널과 4단계 스마트 화질 프리셋(fast, optimal, high, original), Adreno/Mali Vulkan GPU 99개 레이어 풀 오프로드를 결합하여 메모리 격리 환경에서 초고속 에지 검출과 고지능 VLM 멀티모달 시각 추론을 실현합니다."
+
+code_example_py: |
+  import termux_vision as tv
+
+  # 1. Zero-Dependency Spatial Filtering (0.01s ultra-fast)
+  img = tv.io.load_image("photo.jpg")
+  edges = tv.cv.canny(tv.transforms.to_grayscale(img), 40, 120)
+
+  # 2. On-Device VLM Multimodal Inference with 4-Tier Quality Presets
+  with tv.vlm.load("qwen2-vl-2b-q4", quality="optimal") as engine:
+      res = engine.describe("photo.jpg", prompt="Describe this scene in detail.", quality="optimal")
+      print(f"Generated ({res.metrics.tokens_per_second:.1f} t/s): {res.text}")
+
+code_example_js: |
+  import tv from 'termux-vision';
+
+  // 1. Diagnostics & Hardware Probe
+  const doc = tv.doctor(true);
+  console.log(`Vulkan GPU: ${doc.vulkan.status} | RAM: ${doc.hardware.availableRamMb} MB`);
+
+  // 2. Multimodal VLM Inference with Quality Preset
+  const engine = await tv.load({ modelId: 'qwen2-vl-2b-q4', contextLimit: 4096 });
+  const result = await engine.describe('photo.jpg', { quality: 'optimal', maxTokens: 300 });
+  console.log(`[${result.metrics.backend.toUpperCase()}] ${result.text}`);
+  engine.close();
+
+features:
+  - title_en: "4-Tier Quality Preset Scaler"
+    title_ko: "4단계 스마트 화질 프리셋 스케일러"
+    desc_en: "Dynamically balances speed and detail via fast (384px), optimal (768px), high (1280px), and original (1:1) resolution presets."
+    desc_ko: "fast(384px 초고속 38초), optimal(768px 균형 81초), high(1280px 원거리 정밀 266초), original(1:1)의 4단계 프리셋으로 속도와 인식 디테일을 정밀 제어합니다."
+  - title_en: "Vulkan GPU Full-Layer Offload"
+    title_ko: "Vulkan GPU 99개 레이어 풀 오프로드"
+    desc_en: "Direct Adreno and Mali GPU shader acceleration achieving 12~14 tokens/sec on Snapdragon 8 Elite and Exynos platforms."
+    desc_ko: "Snapdragon 8 Elite 및 Exynos 플랫폼에서 Adreno/Mali GPU를 직접 구동하여 초당 12~14단어의 초고속 온디바이스 토큰 생성을 지원합니다."
+  - title_en: "Strict Model Integrity & Anti-Corruption Guard"
+    title_ko: "엄격한 모델 무결성 및 손상 격리 방어"
+    desc_en: "Guarantees zero-drift execution by enforcing a 10MB minimum valid binary threshold and pair verification for language and vision GGUF artifacts."
+    desc_ko: "10MB 미만의 깨진 HTML 에러 파일 및 불완전 다운로드를 원천 차단하고, 텍스트 모델과 mmproj 비전 인코더 쌍의 무결성을 보장합니다."
+
+matrix_table:
+  - category: "Spatial Transforms"
+    operations: "Bilinear Scale, Grayscale, Canny Edge, Sobel Convolution"
+    status: "Production"
+  - category: "VLM Presets"
+    operations: "FAST (384px), OPTIMAL (768px), HIGH (1280px), ORIGINAL (1:1)"
+    status: "Production"
+  - category: "VLM Acceleration"
+    operations: "Adreno/Mali Vulkan GPU (-ngl 99), CPU Resilient Fallback"
+    status: "Production"
+  - category: "Integrity Defense"
+    operations: "Atomic .tmp write, >10MB Size Gate, GGUF/mmproj Pair Validation"
+    status: "Production"
+
+custom_pages:
+  - slug: "vlm-guide"
+    title_ko: "VLM 멀티모달 추론 가이드"
+    title_en: "VLM Inference Guide"
+    file: "docs/vlm_guide.md"
+  - slug: "models"
+    title_ko: "경량 비전 모델 매트릭스"
+    title_en: "Vision Model Zoo"
+    file: "docs/models.md"

@@ -2,6 +2,8 @@ from .manifest import ModelManifest, ArtifactInfo
 from .cache import ModelCacheManager, CATALOG
 from .result import VLMResult, InferenceMetrics
 from .api import load, VLMContext
+from .protocol import TVRPRequest, TVRPResponse, ProtocolError
+from .supervisor import RuntimePolicy, StderrDrainer
 
 
 def get_models() -> ModelCacheManager:
@@ -25,5 +27,10 @@ __all__ = [
     "load",
     "VLMContext",
     "get_models",
-    "models"
+    "models",
+    "TVRPRequest",
+    "TVRPResponse",
+    "ProtocolError",
+    "RuntimePolicy",
+    "StderrDrainer"
 ]

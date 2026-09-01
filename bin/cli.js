@@ -229,6 +229,9 @@ async function main() {
     const repeatPenalty = getArg('--repeat-penalty', null);
     const seed = getArg('--seed', null);
     const systemPrompt = getArg('--system-prompt', null);
+    const ctxSize = getArg('-c', '--ctx-size');
+    const quality = getArg('-q', '--quality') || 'optimal';
+    const maxDim = getArg('--max-dim', null);
     const ngl = getArg('--ngl', null);
     const isJson = hasFlag('--json');
 
@@ -273,6 +276,7 @@ async function main() {
         runtimePath: runtime,
         allowDownload: allowDownload,
         threads: threads ? parseInt(threads, 10) : 4,
+        contextLimit: ctxSize ? parseInt(ctxSize, 10) : null,
         ngl: ngl ? parseInt(ngl, 10) : null
       });
 
@@ -284,7 +288,9 @@ async function main() {
         topK: topK ? parseInt(topK, 10) : undefined,
         repeatPenalty: repeatPenalty ? parseFloat(repeatPenalty) : undefined,
         seed: seed ? parseInt(seed, 10) : undefined,
-        systemPrompt: systemPrompt || undefined
+        systemPrompt: systemPrompt || undefined,
+        quality: quality,
+        maxDim: maxDim
       });
 
       if (isJson) {
@@ -323,6 +329,35 @@ async function main() {
         console.error(`[ERROR] VLM execution failed: ${err.message}`);
         process.exit(15);
       }
+    }
+  }
+
+  if (command === 'canny') {
+    const imagePath = args[1];
+    if (!imagePath || imagePath.startsWith('-')) {
+      console.error('[ERROR] Missing input image path for Canny edge detection.');
+      console.error('Usage: termux-vision canny <image_path> [options]');
+      process.exit(2);
+    }
+    const resolvedImg = path.resolve(imagePath.replace(/^~(?=$|\/|\\)/, os.homedir()));
+    if (!fs.existsSync(resolvedImg)) {
+      console.error(`[ERROR] Image file not found: '${resolvedImg}'`);
+      process.exit(2);
+    }
+    const outPath = getArg('-o', '--output') || 'edges.png';
+    const low = parseFloat(getArg('--low') || '40.0');
+    const high = parseFloat(getArg('--high') || '120.0');
+    
+    // Execute Canny via Python bridge or fallback
+    const { spawnSync } = require('child_process');
+    const pyRes = spawnSync('python3', [
+      '-m', 'termux_vision.cli.main', 'canny', resolvedImg, '-o', outPath, '--low', String(low), '--high', String(high)
+    ], { stdio: 'inherit' });
+    
+    if (pyRes.status === 0) {
+      process.exit(0);
+    } else {
+      process.exit(pyRes.status || 1);
     }
   }
 
