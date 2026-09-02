@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Dict, Tuple
 import numpy as np
 from .conv_block import DepthwiseSeparableConv2D
@@ -30,12 +31,29 @@ class TinyYOLONanoDetector:
         self.head = DepthwiseSeparableConv2D(64, 4 + self.num_classes, kernel_size=1, stride=1, weights=weights.get("head") if weights else None)
         self.decoder = YOLODecoder(class_names=self.class_names, conf_threshold=0.25, iou_threshold=0.45)
 
+        if weights is not None:
+            self._weights_loaded = True
+        else:
+            self._weights_loaded = False
+            warnings.warn(
+                "TinyYOLONanoDetector initialized with random weights (Kaiming Normal, Seed 42). "
+                "Load trained weights via `.load_weights()` for real object detection.",
+                UserWarning,
+                stacklevel=2
+            )
+
+    @property
+    def is_trained(self) -> bool:
+        """Returns True if weights were explicitly loaded from a trained checkpoint."""
+        return self._weights_loaded
+
     def load_weights(self, weights: dict):
         """Loads trained weights dictionary for backbone and detection head."""
         if "conv1" in weights: self.conv1 = DepthwiseSeparableConv2D(3, 16, 3, 2, weights=weights["conv1"])
         if "conv2" in weights: self.conv2 = DepthwiseSeparableConv2D(16, 32, 3, 2, weights=weights["conv2"])
         if "conv3" in weights: self.conv3 = DepthwiseSeparableConv2D(32, 64, 3, 2, weights=weights["conv3"])
         if "head" in weights: self.head = DepthwiseSeparableConv2D(64, 4 + len(self.class_names), 1, 1, weights=weights["head"])
+        self._weights_loaded = True
 
     def detect(self, image: np.ndarray) -> List[Dict]:
         """

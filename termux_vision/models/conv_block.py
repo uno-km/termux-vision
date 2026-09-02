@@ -17,6 +17,7 @@ class DepthwiseSeparableConv2D:
             self.dw_weights = np.asarray(weights["dw"], dtype=np.float32)
             self.pw_weights = np.asarray(weights["pw"], dtype=np.float32)
             self.bias = np.asarray(weights.get("bias", np.zeros(out_channels, dtype=np.float32)), dtype=np.float32)
+            self._weights_loaded = True
         else:
             # Deterministic Kaiming Normal initialization with fixed standard normal scaling
             scale_dw = np.sqrt(2.0 / (kernel_size * kernel_size * in_channels))
@@ -25,12 +26,19 @@ class DepthwiseSeparableConv2D:
             self.dw_weights = (rng.randn(in_channels, kernel_size, kernel_size) * scale_dw).astype(np.float32)
             self.pw_weights = (rng.randn(out_channels, in_channels) * scale_pw).astype(np.float32)
             self.bias = np.zeros(out_channels, dtype=np.float32)
+            self._weights_loaded = False
+
+    @property
+    def is_trained(self) -> bool:
+        """Returns True if weights were explicitly loaded from a trained checkpoint."""
+        return self._weights_loaded
 
     def set_weights(self, dw_weights: np.ndarray, pw_weights: np.ndarray, bias: np.ndarray = None):
         self.dw_weights = np.asarray(dw_weights, dtype=np.float32)
         self.pw_weights = np.asarray(pw_weights, dtype=np.float32)
         if bias is not None:
             self.bias = np.asarray(bias, dtype=np.float32)
+        self._weights_loaded = True
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """

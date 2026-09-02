@@ -67,13 +67,21 @@ def test_conv_block_deterministic_weights_and_set_weights():
     assert np.allclose(conv1.pw_weights, custom_pw)
 
 def test_mobilenet_and_yolo_load_weights_pipeline():
-    """Validates MobileNet and YOLO models support explicit weight loading."""
+    """Validates MobileNet and YOLO models support explicit weight loading and track is_trained status."""
     mobilenet = models.mobilenet.MobileNetV3FeatureExtractor(in_channels=3, feature_dim=64)
+    assert mobilenet.is_trained is False
     x = np.random.randn(3, 32, 32).astype(np.float32)
     feat1 = mobilenet(x)
     assert feat1.shape == (64,)
 
+    mobilenet.load_weights({"block1": {"dw": np.zeros((3,3,3)), "pw": np.zeros((32,3))}})
+    assert mobilenet.is_trained is True
+
     yolo = models.yolo_detector.TinyYOLONanoDetector(num_classes=10)
+    assert yolo.is_trained is False
     img = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
     dets = yolo.detect(img)
     assert isinstance(dets, list)
+
+    yolo.load_weights({"conv1": {"dw": np.zeros((3,3,3)), "pw": np.zeros((16,3))}})
+    assert yolo.is_trained is True

@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from .conv_block import DepthwiseSeparableConv2D
 
@@ -16,12 +17,29 @@ class MobileNetV3FeatureExtractor:
         self.block3 = DepthwiseSeparableConv2D(in_channels=64, out_channels=128, kernel_size=3, stride=2, weights=weights.get("block3") if weights else None)
         self.block4 = DepthwiseSeparableConv2D(in_channels=128, out_channels=feature_dim, kernel_size=3, stride=2, weights=weights.get("block4") if weights else None)
 
+        if weights is not None:
+            self._weights_loaded = True
+        else:
+            self._weights_loaded = False
+            warnings.warn(
+                "MobileNetV3FeatureExtractor initialized with random weights (Kaiming Normal, Seed 42). "
+                "Load trained weights via `.load_weights()` for real feature extraction.",
+                UserWarning,
+                stacklevel=2
+            )
+
+    @property
+    def is_trained(self) -> bool:
+        """Returns True if weights were explicitly loaded from a trained checkpoint."""
+        return self._weights_loaded
+
     def load_weights(self, weights: dict):
         """Loads trained weights dictionary for all convolutional blocks."""
         if "block1" in weights: self.block1 = DepthwiseSeparableConv2D(self.in_channels, 32, 3, 2, weights=weights["block1"])
         if "block2" in weights: self.block2 = DepthwiseSeparableConv2D(32, 64, 3, 2, weights=weights["block2"])
         if "block3" in weights: self.block3 = DepthwiseSeparableConv2D(64, 128, 3, 2, weights=weights["block3"])
         if "block4" in weights: self.block4 = DepthwiseSeparableConv2D(128, self.feature_dim, 3, 2, weights=weights["block4"])
+        self._weights_loaded = True
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         return self.forward(x)
