@@ -34,6 +34,9 @@ class VisionControl(ComponentControl):
         self._model_reg  = ModelRegistry(self.COMPONENT_ID)
         self._inst_reg   = InstanceRegistry(self.COMPONENT_ID)
         self._act_lock   = ActivationLock()
+        # Phase 4: Heartbeat Writer
+        from termux_vision.control.status import VisionStatusWriter
+        self._heartbeat = VisionStatusWriter(self)
 
     def _get_version(self) -> str:
         try:
@@ -173,6 +176,8 @@ class VisionControl(ComponentControl):
         )
         self._inst_reg.register(inst)
         self._write_state()
+        # Phase 4: Heartbeat 시작 (Worker 시작 트리거)
+        self._heartbeat.start()
         return {"instance_id": instance_id, "state": InstanceState.HOT.value}
 
     async def drain_instance(self, instance_id: str) -> dict:
@@ -186,7 +191,12 @@ class VisionControl(ComponentControl):
         if not self._inst_reg.get(instance_id): raise InstanceNotFound(instance_id)
         self._inst_reg.update_state(instance_id, InstanceState.STOPPED)
         self._inst_reg.remove(instance_id)
-        self._write_state()
+        # Phase 4: Heartbeat 중단 (정상 종료 트리거)
+        remaining = self._inst_reg.list_all()
+        if not remaining:
+            self._heartbeat.stop()
+        else:
+            self._write_state()
         return {"instance_id": instance_id, "state": InstanceState.STOPPED.value}
 
     def _write_state(self, *, ready: bool | None = None, last_error: str | None = None) -> None:
