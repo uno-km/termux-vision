@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 
 class DepthwiseSeparableConv2D:
@@ -27,6 +28,12 @@ class DepthwiseSeparableConv2D:
             self.pw_weights = (rng.randn(out_channels, in_channels) * scale_pw).astype(np.float32)
             self.bias = np.zeros(out_channels, dtype=np.float32)
             self._weights_loaded = False
+            warnings.warn(
+                f"DepthwiseSeparableConv2D ({in_channels}->{out_channels}) initialized with untrained random weights (Kaiming Normal, Seed 42). "
+                "Inference output is non-deterministic / uncalibrated. Load trained checkpoint weights for production inference.",
+                UserWarning,
+                stacklevel=2
+            )
 
     @property
     def is_trained(self) -> bool:
