@@ -193,6 +193,14 @@ def main():
     p_bench.add_argument("--runs", type=int, default=3, help="Benchmark run count")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark results in JSON format")
 
+    # ── AMEVA Component Protocol v1 ─────────────────────────────────────────
+    try:
+        from ameva_component.cli_support import build_protocol_subcommands
+        build_protocol_subcommands(subparsers)
+    except ImportError:
+        pass
+    # ────────────────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
 
     if args.command == "doctor":
@@ -415,6 +423,15 @@ def main():
                 print(f"  - VLM Generation Latency: {lat_vlm:.1f} ms ({tps_str})")
         print("[+] Benchmark Complete.")
         sys.exit(EXIT_SUCCESS)
+
+    elif args.command in ("component", "model", "instance"):
+        try:
+            from ameva_component.cli_support import dispatch_protocol
+            from termux_vision.control import VisionControl
+            dispatch_protocol(args, VisionControl())
+        except ImportError:
+            print("[ERROR] ameva-component-sdk not installed.", file=sys.stderr)
+            sys.exit(1)
 
     else:
         parser.print_help()
