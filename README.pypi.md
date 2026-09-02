@@ -1,35 +1,36 @@
-# Termux-Vision (Python)
+﻿# termux-vision
 
-[![PyPI](https://img.shields.io/pypi/v/termux-vision.svg?style=flat-square&color=0369a1)](https://pypi.org/project/termux-vision/)
-[![Python](https://img.shields.io/pypi/pyversions/termux-vision.svg?style=flat-square)](https://pypi.org/project/termux-vision/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-004499.svg?style=flat-square)](https://github.com/uno-km/termux-vision)
+> **On-Device Vision Language Model & Depthwise Separable Conv2D Engine for Android Termux**  
+> *Non-Root Native Execution · VLM Multimodal Pipeline · Mobile Resilient Architecture · Zero Heavy PyTorch Lock-in*
 
-> **안드로이드 Termux를 위한 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진**  
-> *Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine for Android Termux*
+---
 
-## Installation
+## ⚡ 5-Minute Quickstart
 
-```bash
+### Python Installation
+
+`ash
+# In Android Termux:
+pkg update && pkg install -y python python-numpy git
 pip install termux-vision
-```
+`
 
-## Quickstart
+### Python SDK Usage
 
-```python
-import termux_vision as tv
-img = tv.io.load_image("photo.jpg")
-edges = tv.cv.canny(tv.transforms.to_grayscale(img), 40, 120)
-with tv.vlm.load("qwen2-vl-2b-q4", quality="optimal") as engine:
-    res = engine.describe("photo.jpg", prompt="Describe this scene in detail.", quality="optimal")
-    print(f"Generated ({res.metrics.tokens_per_second:.1f} t/s): {res.text}")
-```
+`python
+import numpy as np
+from termux_vision.models import DepthwiseSeparableConv2D
 
-## Description
-Eliminates heavy C++ dependencies by integrating SIMD NEON spatial image transforms with on-device VLM (Qwen2-VL, SmolVLM) multi-tier resolution presets (fast, optimal, high, original) and Vulkan GPU acceleration under strict memory isolation.
+layer = DepthwiseSeparableConv2D(in_channels=3, out_channels=16, kernel_size=3)
+x = np.random.randn(1, 3, 224, 224).astype(np.float32)
+out = layer.forward(x)
+print("Output Shape:", out.shape)
+`
 
-## Documentation
-- [Official Documentation & API Reference](https://uno-km.vercel.app/lib/vision/)
-- [GitHub Repository](https://github.com/uno-km/termux-vision)
+---
 
-## License
-Apache-2.0 License. Copyright (c) 2026 Eunho Kim (@uno-km).
+## 📚 Official Documentation
+
+- **Official Web Documentation**: [https://uno-km.vercel.app/lib/vision/](https://uno-km.vercel.app/lib/vision/)
+- **GitHub Repository**: [https://github.com/uno-km/termux-vision](https://github.com/uno-km/termux-vision)
+- **License**: MIT
