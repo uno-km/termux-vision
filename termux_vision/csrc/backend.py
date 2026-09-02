@@ -44,11 +44,21 @@ def _load_c_backend():
             except Exception as e:
                 _c_backend_load_errors[p] = f"{type(e).__name__}: {e}"
                 import logging
-                logging.getLogger("termux_vision.csrc.backend").debug(
-                    "[termux-vision] C backend dlopen failed at '%s': %s", p, e
+                logging.getLogger("termux_vision.csrc.backend").warning(
+                    "[termux-vision] Native C backend dlopen failed at '%s': %s", p, e
                 )
 
         return None
+
+def get_c_backend_load_errors() -> dict:
+    """Returns diagnostic dictionary of C backend candidates and load error reasons."""
+    _load_c_backend()
+    return dict(_c_backend_load_errors)
+
+def get_cpp_backend_load_errors() -> dict:
+    """Returns diagnostic dictionary of C++ backend candidates and load error reasons."""
+    _load_cpp_backend()
+    return dict(_cpp_backend_load_errors)
 
 def _setup_signatures(lib):
     # compute_integral_c

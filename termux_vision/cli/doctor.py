@@ -7,6 +7,7 @@ import json
 import time
 from typing import Dict, Any, Optional
 from .. import __version__
+from .. import csrc
 from ..vlm.cache import ModelCacheManager
 
 def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str, Any]:
@@ -45,6 +46,11 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
             "llama_cli_available": shutil.which("llama-cli") is not None,
             "installed_models_count": 0,
             "cache_dir": cache_mgr.cache_root
+        },
+        "native_backends": {
+            "has_c_backend": csrc.has_c_backend(),
+            "c_backend_errors": csrc.get_c_backend_load_errors(),
+            "cpp_backend_errors": csrc.get_cpp_backend_load_errors()
         },
         "recommended_preset": "Tier M (smolvlm-500m / 4-Threads CPU Reference)",
         "warnings": []
