@@ -50,8 +50,9 @@ def sobel(image: np.ndarray):
             gx = mag * np.cos(angle_rad)
             gy = mag * np.sin(angle_rad)
             return gx, gy, mag, angle_rad
-    except Exception:
-        pass
+    except (ImportError, RuntimeError, OSError) as _sobel_err:
+        import logging
+        logging.getLogger(__name__).debug("c_sobel fast-path unavailable (%s); using numpy fallback", _sobel_err)
 
     gray_f = gray.astype(np.float32)
     kx = np.array([

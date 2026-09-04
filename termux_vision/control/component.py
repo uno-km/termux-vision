@@ -56,25 +56,41 @@ class VisionControl(ComponentControl):
         ts = now_timestamps()
         state_data = self._state_file.read()
         stale = self._state_file.is_stale(threshold_ms=30_000)
-        pid, pid_alive = self._check_pid()
+        pid_info = self._check_pid()
+        pid = pid_info.get("pid")
+        pid_alive = pid_info.get("alive")
+
         instances = self._inst_reg.list_all()
         hot = [i for i in instances if i.state == InstanceState.HOT]
 
         # import 가능 여부만 (실제 모델 로드 금지)
         vlm_available = False
         try:
-            import termux_vision.vlm.api; vlm_available = True
-        except ImportError: pass
+            import termux_vision.vlm.api
+            vlm_available = True
+        except ImportError as _imp_err:
+            import logging
+            logging.getLogger(__name__).debug("termux-vision: vlm.api not importable: %s", _imp_err)
 
         ready = vlm_available
-        degraded = stale or not pid_alive
+        degraded = stale or (pid_alive is not True)
+
+        proc_dict: dict[str, Any] = {
+            "running": pid_alive,
+            "pid": pid,
+            "verified": pid_info.get("verified", False),
+        }
+        if "inspection_error" in pid_info:
+            proc_dict["inspection_error"] = pid_info["inspection_error"]
+        if "reason" in pid_info:
+            proc_dict["reason"] = pid_info["reason"]
 
         return {
             "protocol": "ameva-component-status/1",
             "component_id": self.COMPONENT_ID, "component_type": self.COMPONENT_TYPE,
             "version": self._get_version(), "ready": ready, "degraded": degraded,
             **ts,
-            "process": {"running": pid_alive, "pid": pid},
+            "process": proc_dict,
             "capabilities": list(self.CAPABILITIES),
             "active_models": [i.model_id for i in hot],
             "backends": {"vlm": vlm_available, "cv": False},
@@ -85,43 +101,67 @@ class VisionControl(ComponentControl):
                            "updated_at": state_data.get("updated_at") if state_data else None},
         }
 
-    def _check_pid(self) -> tuple[int | None, bool]:
+    def _check_pid(self) -> dict[str, Any]:
         """PID 파일 기반 프로세스 활성 여부 확인.
 
-        P0-5: 'pid 없음'과 '검사 실패'를 구분하여 반환.
-        반환: (pid, alive)
-            (int, True)  — 프로세스 확인됨
-            (int, False) — 프로세스 없음(정상 종료)
-            (None, False) — PID 파일 없음 또는 PID 파싱 실패
-        검사 자체가 실패한 경우(PermissionError/OSError)는 예외를 전파하지 않고
-        caller가 structured error로 처리할 수 있도록 (None, False)를 반환하되
-        로그에 기록한다.
+        BLOCKER 1: PermissionError/OSError를 alive=False로 은폐하지 않고
+        alive=None, verified=False, inspection_error 구조로 반환.
         """
         import logging
         _log = logging.getLogger(__name__)
         pid_file = Path.home() / ".local" / "run" / "termux-vision.pid"
 
         if not pid_file.exists():
-            return None, False
+            return {
+                "pid": None,
+                "alive": False,
+                "verified": True,
+                "reason": "pid_file_missing",
+            }
 
         try:
             raw = pid_file.read_text().strip()
         except OSError as read_err:
             _log.warning("termux-vision: PID file read failed: %s", read_err)
-            return None, False
+            return {
+                "pid": None,
+                "alive": None,
+                "verified": False,
+                "inspection_error": {
+                    "code": "PID_FILE_READ_ERROR",
+                    "message": str(read_err),
+                },
+            }
 
         try:
             pid = int(raw)
-        except ValueError:
+        except ValueError as parse_err:
             _log.warning("termux-vision: PID file contains non-integer value: %r", raw)
-            return None, False
+            return {
+                "pid": None,
+                "alive": None,
+                "verified": False,
+                "inspection_error": {
+                    "code": "PID_PARSE_ERROR",
+                    "message": f"Non-integer PID value: {raw!r}",
+                },
+            }
 
         try:
             os.kill(pid, 0)
-            return pid, True
+            return {
+                "pid": pid,
+                "alive": True,
+                "verified": True,
+            }
         except ProcessLookupError:
             # 프로세스가 확실히 존재하지 않음 — 정상 종료 또는 이전 실행 잔여
-            return pid, False
+            return {
+                "pid": pid,
+                "alive": False,
+                "verified": True,
+                "reason": "process_lookup_failed",
+            }
         except PermissionError as perm_err:
             # alive 여부 불확실 — 검사 권한 없음
             _log.warning(
@@ -129,10 +169,26 @@ class VisionControl(ComponentControl):
                 "Process may be alive but unverifiable.",
                 pid, perm_err,
             )
-            return pid, False
+            return {
+                "pid": pid,
+                "alive": None,
+                "verified": False,
+                "inspection_error": {
+                    "code": "PROCESS_INSPECTION_PERMISSION_DENIED",
+                    "message": str(perm_err),
+                },
+            }
         except OSError as os_err:
             _log.warning("termux-vision: PID %d os.kill check failed: %s", pid, os_err)
-            return None, False
+            return {
+                "pid": pid,
+                "alive": None,
+                "verified": False,
+                "inspection_error": {
+                    "code": "PROCESS_INSPECTION_OS_ERROR",
+                    "message": str(os_err),
+                },
+            }
 
     def doctor_full(self) -> dict:
         lite = self.doctor_lite()

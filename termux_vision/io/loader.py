@@ -30,8 +30,9 @@ def load_image(
             if apply_exif_orientation:
                 try:
                     img = ImageOps.exif_transpose(img)
-                except Exception:
-                    pass
+                except (AttributeError, ValueError, TypeError, OSError) as _exif_err:
+                    import logging
+                    logging.getLogger(__name__).debug("EXIF orientation transpose failed (%s), keeping original orientation", _exif_err)
 
             if target_size is not None:
                 img = img.resize(target_size, Image.Resampling.BILINEAR)

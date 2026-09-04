@@ -255,8 +255,9 @@ def cleanup_native_context() -> None:
     if _cpp_lib is not None and hasattr(_cpp_lib, "fast_cv_cleanup_context"):
         try:
             _cpp_lib.fast_cv_cleanup_context()
-        except Exception:
-            pass
+        except Exception as _clean_err:
+            import logging
+            logging.getLogger("termux_vision.csrc.backend").debug("fast_cv_cleanup_context error: %s", _clean_err)
 
 import atexit
 atexit.register(cleanup_native_context)

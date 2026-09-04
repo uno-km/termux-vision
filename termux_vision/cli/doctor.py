@@ -63,8 +63,8 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
                     report["hardware"]["total_ram_mb"] = int(line.split()[1]) // 1024
                 elif line.startswith("MemAvailable:"):
                     report["hardware"]["available_ram_mb"] = int(line.split()[1]) // 1024
-    except Exception:
-        pass
+    except (OSError, ValueError, IndexError) as _mem_err:
+        report["warnings"].append(f"RAM inspection failed: {_mem_err}")
 
     # Truthful Vulkan status via ameva-vulkan-runtime integration
     if probe_vulkan:

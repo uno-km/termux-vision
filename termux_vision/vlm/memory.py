@@ -48,8 +48,8 @@ def get_system_ram_info() -> Dict[str, int]:
                 page_size = os.sysconf("SC_PAGE_SIZE")
                 total_mb = (pages * page_size) // (1024 * 1024)
                 avail_mb = total_mb // 2
-        except Exception:
-            pass
+        except (AttributeError, ValueError, OSError) as _sc_err:
+            logger.debug("POSIX sysconf memory inspection failed: %s", _sc_err)
 
     if total_mb == 0:
         # Default reasonable baseline if all probes fail

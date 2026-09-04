@@ -516,8 +516,8 @@ class ModelCacheManager:
                             "size_mb": round(total_size / (1024 * 1024), 2),
                             "path": mdir
                         })
-                    except Exception:
-                        pass
+                    except Exception as _manifest_err:
+                        logger.debug("Failed scanning cache entry '%s': %s", name, _manifest_err)
 
         if os.path.exists(self.legacy_cache):
             for k, manifest in CATALOG.items():

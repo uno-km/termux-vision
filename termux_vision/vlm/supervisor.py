@@ -40,8 +40,8 @@ class StderrDrainer:
                     self.buffer.extend(chunk)
                     if len(self.buffer) > self.max_bytes:
                         self.buffer = self.buffer[-self.max_bytes:]
-        except Exception:
-            pass
+        except (OSError, ValueError) as _drain_err:
+            logger.debug("PipeDrainer stream closed or error: %s", _drain_err)
 
     def get_logs(self) -> str:
         with self.lock:

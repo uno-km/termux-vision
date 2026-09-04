@@ -128,8 +128,9 @@ class VLMContext:
             if temp_path and os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
-                except OSError:
-                    pass
+                except OSError as _rm_err:
+                    import logging
+                    logging.getLogger(__name__).debug("temp image cleanup failed (%s): %s", temp_path, _rm_err)
 
     def ask(self, image: Union[str, np.ndarray], question: str, **kwargs) -> str:
         if question is None or not question.strip():
@@ -212,8 +213,11 @@ def load(
                 if val <= 0:
                     raise ValueError(f"Parameter 'threads' must be a positive integer > 0. Received: {threads}")
                 actual_threads = max(1, min(128, val))
-            except ValueError:
-                pass
+            except ValueError as _val_err:
+                if "positive integer" in str(_val_err):
+                    raise
+                import logging
+                logging.getLogger(__name__).warning("Invalid threads string %r, defaulting to 4: %s", threads, _val_err)
 
         # 4. Strict Device & Fallback Policy
         requested_device = device.lower().strip()
