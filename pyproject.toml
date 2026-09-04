@@ -1,11 +1,11 @@
-[build-system]
+﻿[build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "termux-vision"
-version = "1.1.1"
-description = "Lightweight On-Device Computer Vision and VLM Framework for Android Termux"
+version = "1.1.2"
+description = "Lightweight on-device computer vision and VLM framework utilizing device resources for Android Termux"
 readme = "README.md"
 authors = [
   { name = "termux-vision contributors" }
@@ -31,17 +31,20 @@ dependencies = [
     "Pillow>=8.0.0",
     "ameva-vulkan-runtime>=1.0.0",
     "termux-llamacpp>=0.1.0",
+    "ameva-component-sdk>=0.1.0,<2.0",
 ]
 
 [project.optional-dependencies]
 llamacpp = [
     "termux-llamacpp>=0.1.0",
+    "ameva-component-sdk>=0.1.0,<2.0",
 ]
 train = [
     "termux-train>=0.1.0",
 ]
 all = [
     "termux-llamacpp>=0.1.0",
+    "ameva-component-sdk>=0.1.0,<2.0",
     "termux-train>=0.1.0",
 ]
 

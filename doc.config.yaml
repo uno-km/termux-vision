@@ -2,20 +2,20 @@
 name: "Termux-Vision"
 package_name_pypi: "termux-vision"
 package_name_npm: "termux-vision"
-version: "v1.1.0"
+version: "v1.1.1"
 release_name: "4-Tier Quality Presets & Vulkan Hardware Acceleration"
 license: "Apache-2.0"
 platform: "Android ARM64 / Termux Bionic"
 github_repo_url: "https://github.com/uno-km/termux-vision"
 
-tagline_ko: "안드로이드 Termux를 위한 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
-tagline_en: "Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine for Android Termux"
+tagline_ko: "디바이스 리소스를 활용한 안드로이드 Termux 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
+tagline_en: "Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine Utilizing Device Resources for Android Termux"
 
 why_challenge_en: "Standard vision frameworks like OpenCV and heavy Python runtimes fail on mobile Termux due to multi-gigabyte library sizes, missing GLIBC bindings, high latency, and severe thermal throttling during high-resolution vision encoding."
 why_challenge_ko: "기존 OpenCV, PyTorch 등 대규모 비전 프레임워크는 수 기가바이트의 거대한 의존성, GLIBC/Bionic 호환성 결여, 고해상도 비전 인코딩 시 발생하는 극심한 발열과 지연시간으로 인해 모바일 Termux 환경에서 원활히 동작하기 어렵습니다."
 
-description_en: "Eliminates heavy C++ dependencies by integrating SIMD NEON spatial image transforms with on-device VLM (Qwen2-VL, SmolVLM) multi-tier resolution presets (fast, optimal, high, original) and Vulkan GPU acceleration under strict memory isolation."
-description_ko: "순수 ARM64 NEON 가속 커널과 4단계 스마트 화질 프리셋(fast, optimal, high, original), Adreno/Mali Vulkan GPU 99개 레이어 풀 오프로드를 결합하여 메모리 격리 환경에서 초고속 에지 검출과 고지능 VLM 멀티모달 시각 추론을 실현합니다."
+description_en: "Eliminates heavy C++ dependencies by integrating SIMD NEON spatial image transforms with on-device VLM (Qwen2-VL, SmolVLM) multi-tier resolution presets (fast, optimal, high, original) utilizing device resources under strict memory isolation."
+description_ko: "순수 ARM64 NEON 커널과 4단계 화질 프리셋(fast, optimal, high, original), 디바이스 리소스 최적화 연산을 결합하여 메모리 격리 환경에서 엣지 검출과 VLM 멀티모달 시각 추론을 실현합니다."
 
 code_example_py: |
   import termux_vision as tv
