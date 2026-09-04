@@ -86,14 +86,53 @@ class VisionControl(ComponentControl):
         }
 
     def _check_pid(self) -> tuple[int | None, bool]:
+        """PID 파일 기반 프로세스 활성 여부 확인.
+
+        P0-5: 'pid 없음'과 '검사 실패'를 구분하여 반환.
+        반환: (pid, alive)
+            (int, True)  — 프로세스 확인됨
+            (int, False) — 프로세스 없음(정상 종료)
+            (None, False) — PID 파일 없음 또는 PID 파싱 실패
+        검사 자체가 실패한 경우(PermissionError/OSError)는 예외를 전파하지 않고
+        caller가 structured error로 처리할 수 있도록 (None, False)를 반환하되
+        로그에 기록한다.
+        """
+        import logging
+        _log = logging.getLogger(__name__)
         pid_file = Path.home() / ".local" / "run" / "termux-vision.pid"
-        if pid_file.exists():
-            try:
-                pid = int(pid_file.read_text().strip())
-                os.kill(pid, 0)
-                return pid, True
-            except Exception: pass
-        return None, False
+
+        if not pid_file.exists():
+            return None, False
+
+        try:
+            raw = pid_file.read_text().strip()
+        except OSError as read_err:
+            _log.warning("termux-vision: PID file read failed: %s", read_err)
+            return None, False
+
+        try:
+            pid = int(raw)
+        except ValueError:
+            _log.warning("termux-vision: PID file contains non-integer value: %r", raw)
+            return None, False
+
+        try:
+            os.kill(pid, 0)
+            return pid, True
+        except ProcessLookupError:
+            # 프로세스가 확실히 존재하지 않음 — 정상 종료 또는 이전 실행 잔여
+            return pid, False
+        except PermissionError as perm_err:
+            # alive 여부 불확실 — 검사 권한 없음
+            _log.warning(
+                "termux-vision: PID %d alive check failed (PermissionError): %s. "
+                "Process may be alive but unverifiable.",
+                pid, perm_err,
+            )
+            return pid, False
+        except OSError as os_err:
+            _log.warning("termux-vision: PID %d os.kill check failed: %s", pid, os_err)
+            return None, False
 
     def doctor_full(self) -> dict:
         lite = self.doctor_lite()

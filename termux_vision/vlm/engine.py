@@ -51,12 +51,18 @@ class ZeroFlickerEngine:
             resolved = LlamaRuntime().get_binary_path("llama-cli")
             if resolved:
                 bin_path = str(resolved)
-        except Exception:
-            from .runtime.resolver import resolve_llama_cli
+        except (ImportError, OSError) as _llamacpp_err:
+            import logging
+            _log = logging.getLogger(__name__)
+            _log.debug("vision: termux-llamacpp resolver unavailable (%s), trying local resolver.", _llamacpp_err)
             try:
+                from .runtime.resolver import resolve_llama_cli
                 bin_path = resolve_llama_cli().executable
-            except Exception:
-                pass
+            except (ImportError, OSError, AttributeError) as _res_err:
+                _log.warning(
+                    "vision: llama-cli resolver failed (%s); will attempt PATH lookup at runtime.",
+                    _res_err,
+                )
 
         # Prepare Vulkan environment via ameva-vulkan-runtime
         proc_env = os.environ.copy()
@@ -64,8 +70,12 @@ class ZeroFlickerEngine:
             try:
                 from ameva_vulkan_runtime.adapters import get_vulkan_env
                 proc_env = get_vulkan_env()
-            except Exception:
-                pass
+            except (ImportError, OSError) as _vulkan_err:
+                import logging
+                logging.getLogger(__name__).info(
+                    "vision: ameva-vulkan-runtime unavailable (%s); proceeding without Vulkan env.",
+                    _vulkan_err,
+                )
 
         try:
             cli_cmd = [
