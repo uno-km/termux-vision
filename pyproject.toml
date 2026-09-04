@@ -48,6 +48,10 @@ all = [
 [project.scripts]
 termux-vision = "termux_vision.cli.main:main"
 
+[project.entry-points."ameva.components"]
+termux-vision = "termux_vision.adapter:create_adapter"
+
+
 [project.urls]
 Homepage = "https://uno-km.vercel.app/lib/vision/"
 Documentation = "https://uno-km.vercel.app/lib/vision/"

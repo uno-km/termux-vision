@@ -27,3 +27,17 @@ htmlcov/
 ssh_real_device_test.py
 *.tmp
 *.log
+
+# ==============================================================================
+# Security & Credentials Isolation Policy
+# ==============================================================================
+.env*
+!.env.example
+*.pem
+*.key
+*.crt
+id_rsa*
+.pypirc
+.npmrc
+secrets.json
+scratch/

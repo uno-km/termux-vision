@@ -44,9 +44,32 @@ class ZeroFlickerEngine:
             prompt_path = pf.name
             pf.write(prompt)
 
+        # Resolve binary path via termux-llamacpp / resolver
+        bin_path = "llama-cli"
+        try:
+            from termux_llamacpp import LlamaRuntime
+            resolved = LlamaRuntime().get_binary_path("llama-cli")
+            if resolved:
+                bin_path = str(resolved)
+        except Exception:
+            from .runtime.resolver import resolve_llama_cli
+            try:
+                bin_path = resolve_llama_cli().executable
+            except Exception:
+                pass
+
+        # Prepare Vulkan environment via ameva-vulkan-runtime
+        proc_env = os.environ.copy()
+        if self.use_vulkan:
+            try:
+                from ameva_vulkan_runtime.adapters import get_vulkan_env
+                proc_env = get_vulkan_env()
+            except Exception:
+                pass
+
         try:
             cli_cmd = [
-                "llama-cli",
+                bin_path,
                 "-m", self.text_model_path,
                 "--mmproj", self.vision_model_path,
                 "--image", image_path,
@@ -65,6 +88,7 @@ class ZeroFlickerEngine:
                 cli_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env=proc_env,
                 text=True
             )
             out, err = process.communicate()

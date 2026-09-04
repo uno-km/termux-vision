@@ -133,41 +133,48 @@ class SubprocessVLMRuntime:
             prompt_file = pf.name
             pf.write(formatted_prompt)
 
-        if self.custom_ngl is not None:
-            ngl_val = str(self.custom_ngl)
-        else:
-            ngl_val = "99" if target_backend in ("vulkan", "auto", "gpu") else "0"
+        # Delegate CLI construction to ameva-vulkan-runtime VisionAdapter
+        try:
+            from ameva_vulkan_runtime.adapters.vision import VisionAdapter
+            cli_cmd = VisionAdapter.build_cli_args(
+                executable=self.executable,
+                text_model_path=self.text_model_path,
+                vision_model_path=self.vision_model_path,
+                image_path=image_path,
+                prompt_file=prompt_file,
+                target_backend=target_backend,
+                threads=self.threads,
+                context_limit=self.context_limit,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                repeat_penalty=repeat_penalty,
+                top_p=top_p,
+                top_k=top_k,
+                presence_penalty=presence_penalty,
+                frequency_penalty=frequency_penalty,
+                seed=seed,
+                ngl_override=self.custom_ngl,
+            )
+        except ImportError:
+            # Standalone fallback if ameva-vulkan-runtime is not installed
+            ngl_val = str(self.custom_ngl) if self.custom_ngl is not None else ("99" if target_backend in ("vulkan", "gpu") else "0")
+            cli_cmd = [
+                str(self.executable),
+                "-m", str(self.text_model_path),
+                "--mmproj", str(self.vision_model_path),
+                "--image", str(image_path),
+                "-f", str(prompt_file),
+                "-t", str(self.threads),
+                "-c", str(self.context_limit),
+                "-n", str(max_tokens),
+                "--temp", str(temperature),
+                "-ngl", ngl_val,
+                "--single-turn",
+                "--simple-io",
+            ]
+            if target_backend in ("vulkan", "gpu"):
+                cli_cmd.extend(["--device", "vulkan"])
 
-        cli_cmd = [
-            self.executable,
-            "-m", str(self.text_model_path),
-            "--mmproj", str(self.vision_model_path),
-            "--image", str(image_path),
-            "-f", str(prompt_file),
-            "-t", str(self.threads),
-            "-c", str(self.context_limit),
-            "-n", str(max_tokens),
-            "--temp", str(temperature),
-            "-ngl", ngl_val,
-            "--single-turn",
-            "--simple-io"
-        ]
-
-        if target_backend in ("auto", "vulkan", "gpu"):
-            cli_cmd.extend(["--device", "auto" if target_backend == "auto" else "vulkan"])
-
-        if repeat_penalty is not None:
-            cli_cmd.extend(["--repeat-penalty", str(repeat_penalty)])
-        if top_p is not None:
-            cli_cmd.extend(["--top-p", str(top_p)])
-        if top_k is not None:
-            cli_cmd.extend(["--top-k", str(top_k)])
-        if presence_penalty is not None:
-            cli_cmd.extend(["--presence-penalty", str(presence_penalty)])
-        if frequency_penalty is not None:
-            cli_cmd.extend(["--frequency-penalty", str(frequency_penalty)])
-        if seed is not None:
-            cli_cmd.extend(["-s", str(seed)])
         if stop_tokens:
             for st in stop_tokens:
                 cli_cmd.extend(["-r", str(st)])
