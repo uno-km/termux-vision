@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] - 2026-09-05
+
+### Changed
+- Migrated hardware acceleration dependency to unified `ameva-runtime>=2.0.0` and `@ameva/runtime>=2.0.0`.
+- Fixed Doctor Vulkan driver discovery keys (`loader_detected`, `driver_file_detected`).
+- Standardized VLM and OpenCV Canny acceleration bridge.
+
+---
+
 ## [1.1.1] - 2026-09-02
 
 ### Added
