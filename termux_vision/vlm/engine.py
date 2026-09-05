@@ -64,7 +64,7 @@ class ZeroFlickerEngine:
                     _res_err,
                 )
 
-        # Prepare Vulkan environment via ameva-vulkan-runtime
+        # Prepare Vulkan environment via ameva-runtime
         proc_env = os.environ.copy()
         if self.use_vulkan:
             try:

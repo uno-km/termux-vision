@@ -156,7 +156,7 @@ class SubprocessVLMRuntime:
                 ngl_override=self.custom_ngl,
             )
         except ImportError:
-            # Standalone fallback if ameva-vulkan-runtime is not installed
+            # Standalone fallback if ameva-runtime is not installed
             ngl_val = str(self.custom_ngl) if self.custom_ngl is not None else ("99" if target_backend in ("vulkan", "gpu") else "0")
             cli_cmd = [
                 str(self.executable),

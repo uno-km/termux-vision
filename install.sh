@@ -29,9 +29,9 @@ fi
 echo "[3/6] Pre-provisioning Python build toolchains..."
 pip install --upgrade pip setuptools wheel
 
-# 3. Provision Core Accelerators (termux-llamacpp & ameva-vulkan-runtime)
-echo "[4/7] Provisioning hardware runtimes (termux-llamacpp & ameva-vulkan-runtime)..."
-pip install ameva-vulkan-runtime || true
+# 3. Provision Core Accelerators (termux-llamacpp & ameva-runtime)
+echo "[4/7] Provisioning hardware runtimes (termux-llamacpp & ameva-runtime)..."
+pip install ameva-runtime || true
 if ! command -v llama-cli >/dev/null 2>&1 && [ ! -f "$HOME/.termux-llama/current/bin/llama-cli" ]; then
     pip install termux-llamacpp && (termux-llama install || true) || echo "[*] Note: You can provision llama-cli later using: pip install termux-llamacpp && termux-llama install"
 fi

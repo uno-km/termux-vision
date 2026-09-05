@@ -263,7 +263,7 @@ import atexit
 atexit.register(cleanup_native_context)
 
 def has_vulkan_backend() -> bool:
-    """Inspects Vulkan availability via official ameva-vulkan-runtime bridge."""
+    """Inspects Vulkan availability via official ameva-runtime bridge."""
     try:
         from ameva_runtime import vulkan as avr
         return bool(avr.is_available())

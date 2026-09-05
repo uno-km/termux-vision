@@ -68,7 +68,7 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
     except (OSError, ValueError, IndexError) as _mem_err:
         report["warnings"].append(f"RAM inspection failed: {_mem_err}")
 
-    # Truthful Vulkan status via ameva-vulkan-runtime integration
+    # Truthful Vulkan status via ameva-runtime integration
     if probe_vulkan:
         try:
             from ameva_runtime.vulkan.adapters import find_system_vulkan_driver_dir
