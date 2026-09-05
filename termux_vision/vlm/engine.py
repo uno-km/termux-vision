@@ -68,12 +68,12 @@ class ZeroFlickerEngine:
         proc_env = os.environ.copy()
         if self.use_vulkan:
             try:
-                from ameva_vulkan_runtime.adapters import get_vulkan_env
+                from ameva_runtime.vulkan.adapters import get_vulkan_env
                 proc_env = get_vulkan_env()
             except (ImportError, OSError) as _vulkan_err:
                 import logging
                 logging.getLogger(__name__).info(
-                    "vision: ameva-vulkan-runtime unavailable (%s); proceeding without Vulkan env.",
+                    "vision: ameva-runtime unavailable (%s); proceeding without Vulkan env.",
                     _vulkan_err,
                 )
 

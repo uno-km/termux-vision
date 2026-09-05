@@ -133,9 +133,9 @@ class SubprocessVLMRuntime:
             prompt_file = pf.name
             pf.write(formatted_prompt)
 
-        # Delegate CLI construction to ameva-vulkan-runtime VisionAdapter
+        # Delegate CLI construction to ameva-runtime.vulkan VisionAdapter
         try:
-            from ameva_vulkan_runtime.adapters.vision import VisionAdapter
+            from ameva_runtime.vulkan.adapters.vision import VisionAdapter
             cli_cmd = VisionAdapter.build_cli_args(
                 executable=self.executable,
                 text_model_path=self.text_model_path,
@@ -203,8 +203,8 @@ class SubprocessVLMRuntime:
                     except (subprocess.TimeoutExpired, ProcessLookupError):
                         try:
                             os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
+                        except ProcessLookupError as _proc_err:
+                            _ = _proc_err
                 else:
                     process.kill()
                 raise SubprocessRuntimeError(f"VLM inference timed out after {self.timeout_sec}s")

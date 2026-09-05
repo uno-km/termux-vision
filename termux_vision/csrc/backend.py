@@ -265,18 +265,18 @@ atexit.register(cleanup_native_context)
 def has_vulkan_backend() -> bool:
     """Inspects Vulkan availability via official ameva-vulkan-runtime bridge."""
     try:
-        import ameva_vulkan_runtime as avr
+        from ameva_runtime import vulkan as avr
         return bool(avr.is_available())
     except ImportError:
         return False
 
 def get_vulkan_device_name() -> str:
-    """Returns physical Vulkan GPU device name via official ameva-vulkan-runtime bridge."""
+    """Returns physical Vulkan GPU device name via official ameva-runtime bridge."""
     try:
-        import ameva_vulkan_runtime as avr
-        return avr.get_device_name() or "Vulkan GPU Device (via ameva-vulkan-runtime)"
+        from ameva_runtime import vulkan as avr
+        return avr.get_device_name() or "Vulkan GPU Device (via ameva-runtime)"
     except ImportError:
-        return "None (CPU Pipeline Only; Install ameva-vulkan-runtime for GPU acceleration)"
+        return "None (CPU Pipeline Only; Install ameva-runtime for GPU acceleration)"
 
 def c_canny(
     src_uint8: np.ndarray, 
@@ -288,14 +288,14 @@ def c_canny(
     src_cont = _ensure_2d_uint8(src_uint8)
     h, w = src_cont.shape
 
-    # 1. Fail-Fast: termux-vision delegates Vulkan GPU compute to ameva-vulkan-runtime
+    # 1. Fail-Fast: termux-vision delegates Vulkan GPU compute to ameva-runtime
     if dev in ("vulkan", "gpu"):
         if not has_vulkan_backend():
             from ..errors import VulkanNotAvailableError
             raise VulkanNotAvailableError(
-                reason="Native Vulkan GPU acceleration is managed via 'ameva-vulkan-runtime'.\n"
-                       "[Action Required] ameva-vulkan-runtime is not installed or no Vulkan GPU driver was detected.\n"
-                       "  - Install official runtime: pip install ameva-vulkan-runtime\n"
+                reason="Native Vulkan GPU acceleration is managed via 'ameva-runtime'.\n"
+                       "[Action Required] ameva-runtime is not installed or no Vulkan GPU driver was detected.\n"
+                       "  - Install official runtime: pip install ameva-runtime\n"
                        "  - Or switch to CPU mode: device='cpu' / --device cpu"
             )
 

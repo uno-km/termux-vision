@@ -37,6 +37,8 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
         "vulkan": {
             "driver_dir": None,
             "vulkan_loader_installed": shutil.which("vulkaninfo") is not None,
+            "loader_detected": shutil.which("vulkaninfo") is not None,
+            "driver_file_detected": False,
             "compute_probe_executed": probe_vulkan,
             "safe_for_vlm": None,
             "status": "unverified"
@@ -69,21 +71,23 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
     # Truthful Vulkan status via ameva-vulkan-runtime integration
     if probe_vulkan:
         try:
-            from ameva_vulkan_runtime.adapters import find_system_vulkan_driver_dir
-            import ameva_vulkan_runtime as avr
+            from ameva_runtime.vulkan.adapters import find_system_vulkan_driver_dir
+            from ameva_runtime import vulkan as avr
             driver_dir = find_system_vulkan_driver_dir()
-            report["vulkan"]["driver_dir"] = driver_dir
-            report["vulkan"]["ameva_runtime_detected"] = True
             is_avail = bool(driver_dir is not None)
+            report["vulkan"]["driver_dir"] = driver_dir
+            report["vulkan"]["driver_file_detected"] = is_avail
+            report["vulkan"]["loader_detected"] = bool(is_avail or report["vulkan"]["vulkan_loader_installed"])
+            report["vulkan"]["ameva_runtime_detected"] = True
             report["vulkan"]["status"] = "driver_detected_experimental" if is_avail else "disabled"
             dev_name = avr.get_device_name() if hasattr(avr, "get_device_name") and callable(avr.get_device_name) else "Vulkan GPU"
             report["vulkan"]["device_name"] = dev_name
-            report["vulkan"]["note"] = "Hardware driver dynamically discovered via ameva-vulkan-runtime."
+            report["vulkan"]["note"] = "Hardware driver dynamically discovered via ameva-runtime."
         except ImportError:
             report["vulkan"]["ameva_runtime_detected"] = False
             report["vulkan"]["status"] = "disabled"
             report["vulkan"]["safe_for_vlm"] = False
-            report["vulkan"]["note"] = "Install ameva-vulkan-runtime for optimized GPU compute shaders."
+            report["vulkan"]["note"] = "Install ameva-runtime for optimized GPU compute shaders."
 
     # Model count and Actual Full SHA-256 check
     installed = cache_mgr.list_installed()
