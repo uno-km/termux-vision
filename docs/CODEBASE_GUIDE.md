@@ -56,7 +56,7 @@
 # 전체 설치 흐름:
 # 1. 패키지 매니저 감지 (Termux pkg vs Debian/Ubuntu apt-get)
 # 2. 필수 바이너리 빌드 도구 설치 (clang, git, python, numpy, libjpeg-turbo, nodejs 등)
-# 3. ameva-vulkan-runtime 및 llama-cli(termux-llamacpp) 프로비저닝
+# 3. ameva-runtime 및 llama-cli(termux-llamacpp) 프로비저닝
 # 4. 네이티브 C & Vulkan 가속 라이브러리 컴파일
 #    - clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm
 #    - clang++ -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv_vk.so termux_vision/csrc/vk_cv_engine.cpp
@@ -66,8 +66,8 @@
 ```
 
 ### 2.2 패키지 명세
-- **`pyproject.toml`**: `setuptools>=61.0` 기반, 의존성 `numpy>=1.20.0`, `Pillow>=8.0.0`, `ameva-vulkan-runtime>=1.0.0`, 선택적 의존성 `termux-train>=0.1.0`. 진입점 CLI: `termux-vision = termux_vision.cli.main:main`.
-- **`package.json`**: `version: 1.1.0`, 바이너리 실행 파일 `termux-vision`, `tv` (`bin/cli.js`), TypeScript 타입 정의 `index.d.ts`.
+- **`pyproject.toml`**: `setuptools>=61.0` 기반, 의존성 `numpy>=1.20.0`, `Pillow>=8.0.0`, `ameva-runtime>=2.0.0`, 선택적 의존성 `termux-train>=0.1.0`. 진입점 CLI: `termux-vision = termux_vision.cli.main:main`.
+- **`package.json`**: `version: 1.1.3`, 바이너리 실행 파일 `termux-vision`, `tv` (`bin/cli.js`), TypeScript 타입 정의 `index.d.ts`.
 
 ---
 
