@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] - 2026-09-05
+
+### Changed
+- Resolved Node.js doctor `@ameva/runtime` module require preventing runtime lookup errors.
+- Aligned backend docstrings, install script dependencies, and subprocess environment bindings.
+
+---
+
 ## [1.1.3] - 2026-09-05
 
 ### Changed
