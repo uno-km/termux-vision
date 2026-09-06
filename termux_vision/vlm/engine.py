@@ -68,14 +68,19 @@ class ZeroFlickerEngine:
         proc_env = os.environ.copy()
         if self.use_vulkan:
             try:
-                from ameva_runtime.vulkan.adapters import get_vulkan_env
-                proc_env = get_vulkan_env()
-            except (ImportError, OSError) as _vulkan_err:
-                import logging
-                logging.getLogger(__name__).info(
-                    "vision: ameva-runtime unavailable (%s); proceeding without Vulkan env.",
-                    _vulkan_err,
-                )
+                from ameva_runtime.adapters import VisionAdapter
+                proc_env = VisionAdapter.get_execution_environment(base_env=proc_env)
+            except ImportError as _vulkan_err:
+                raise RuntimeError(
+                    "[FAIL-FAST] [ERROR: AMEVA-VISION-E001] GPU acceleration requires 'ameva-runtime'.\n"
+                    "Cause: Hardware abstraction provider 'ameva-runtime' is not installed.\n"
+                    "Action Required: Install ameva-runtime or run without GPU: use_vulkan=False\n"
+                    "Documentation: https://uno-km.vercel.app/lib/vision/"
+                ) from _vulkan_err
+            except Exception as _vulkan_err:
+                raise RuntimeError(
+                    f"[FAIL-FAST] [ERROR: AMEVA-VISION-E001] Vision Vulkan acceleration initialization failed: {_vulkan_err}"
+                ) from _vulkan_err
 
         try:
             cli_cmd = [
@@ -84,7 +89,6 @@ class ZeroFlickerEngine:
                 "--mmproj", self.vision_model_path,
                 "--image", image_path,
                 "-f", prompt_path,
-                "-st",
                 "-t", str(self.threads),
                 "-c", "1024",
                 "-n", str(max_tokens),
@@ -96,6 +100,7 @@ class ZeroFlickerEngine:
             t0 = time.perf_counter()
             process = subprocess.Popen(
                 cli_cmd,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=proc_env,

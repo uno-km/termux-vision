@@ -197,7 +197,7 @@ def main():
     try:
         from ameva_component.cli_support import build_protocol_subcommands
         build_protocol_subcommands(subparsers)
-    except ImportError as _proto_err:
+    except (ImportError, Exception) as _proto_err:
         import logging
         logging.getLogger("termux_vision.cli").debug(
             "Optional AMEVA component CLI protocol subcommands omitted: %s", _proto_err

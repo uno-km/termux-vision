@@ -169,8 +169,6 @@ class SubprocessVLMRuntime:
                 "-n", str(max_tokens),
                 "--temp", str(temperature),
                 "-ngl", ngl_val,
-                "--single-turn",
-                "--simple-io",
             ]
             if target_backend in ("vulkan", "gpu"):
                 cli_cmd.extend(["--device", "vulkan"])
@@ -179,7 +177,11 @@ class SubprocessVLMRuntime:
             for st in stop_tokens:
                 cli_cmd.extend(["-r", str(st)])
 
+        # Strip any obsolete single-turn flags to ensure compatibility with modern llama-cli
+        cli_cmd = [arg for arg in cli_cmd if arg not in ("--single-turn", "-st")]
+
         popen_kwargs = {
+            "stdin": subprocess.DEVNULL,
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
             "text": True,
