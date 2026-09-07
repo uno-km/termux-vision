@@ -83,19 +83,47 @@ class ZeroFlickerEngine:
                 ) from _vulkan_err
 
         try:
-            cli_cmd = [
-                bin_path,
-                "-m", self.text_model_path,
-                "--mmproj", self.vision_model_path,
-                "--image", image_path,
-                "-f", prompt_path,
-                "-t", str(self.threads),
-                "-c", "1024",
-                "-n", str(max_tokens),
-                "--temp", str(temperature),
-                "--repeat-penalty", str(repeat_penalty),
-                "-ngl", "99" if self.use_vulkan else "0"
-            ]
+            try:
+                from ameva_runtime.adapters import VisionAdapter
+                cli_cmd = VisionAdapter.build_cli_args(
+                    executable=bin_path,
+                    text_model_path=self.text_model_path,
+                    vision_model_path=self.vision_model_path,
+                    image_path=image_path,
+                    prompt_file=prompt_path,
+                    target_backend="vulkan" if self.use_vulkan else "cpu",
+                    threads=self.threads,
+                    context_limit=1024,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    repeat_penalty=repeat_penalty,
+                    pure_gpu=True,
+                    fit_off=True,
+                    batch_size=64,
+                    ubatch_size=64,
+                    flash_attn=False,
+                    no_mmproj_offload=True,
+                )
+            except ImportError:
+                cli_cmd = [
+                    bin_path,
+                    "-m", self.text_model_path,
+                    "--mmproj", self.vision_model_path,
+                    "--image", image_path,
+                    "-f", prompt_path,
+                    "-t", str(self.threads),
+                    "-c", "1024",
+                    "-n", str(max_tokens),
+                    "--temp", str(temperature),
+                    "--repeat-penalty", str(repeat_penalty),
+                    "-ngl", "99" if self.use_vulkan else "0",
+                    "-b", "64",
+                    "-ub", "64",
+                    "-fa", "off",
+                    "--no-mmproj-offload",
+                ]
+                if self.use_vulkan:
+                    cli_cmd.extend(["-ot", "token_embd.weight=Vulkan0", "-fit", "off"])
 
             t0 = time.perf_counter()
             process = subprocess.Popen(
