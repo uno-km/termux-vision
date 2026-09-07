@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-09-07
+
+### Added
+- **Qualcomm Snapdragon 8 Elite (Adreno 830) Full-GPU VLM Acceleration**:
+  - Validated 25/25 layer full GPU offloading on Galaxy S25 Adreno 830 (15.00 tokens/s generation, Moondream2 1.8B f16, 2,706 MiB VRAM).
+  - Qualcomm SPIR-V JIT shader compiler patch: `mul_mat_vec_max_cols = 2` (fixed register spilling and `VK_ERROR_UNKNOWN` aborts).
+  - Android kernel GPU watchdog (`kgsl`) timeout (`ErrorDeviceLost`) defense: `GGML_VULKAN_SKIP_CHECKS="999999999"` injection and micro-batch prefill chunking (`-b 64 -ub 64`).
+  - Real-world empirical visual QA validation on photorealistic diffusion and geometric test scenes.
+- **Dynamic Parameter & Execution Un-Clamping**:
+  - `ZeroFlickerEngine` thread and batch parameter clamping removed, forwarding user options directly to `VisionAdapter`.
+- **Installer Hardening**:
+  - `install.sh` wheel installation unified to prevent legacy PyPI package overwriting.
+
+---
+
 ## [1.3.1] - 2026-09-07
 
 ### Added

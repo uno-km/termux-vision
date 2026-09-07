@@ -12,7 +12,7 @@ from typing import List, Optional
 try:
     from . import __version__
 except Exception:
-    __version__ = "1.3.1"
+    __version__ = "1.4.0"
 
 GITHUB_REPO = "uno-km/termux-vision"
 AMEVA_RUNTIME_RELEASE_LATEST = "https://github.com/uno-km/ameva-runtime/releases/latest/download"

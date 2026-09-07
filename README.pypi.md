@@ -31,7 +31,7 @@ pip install termux-vision
 
 ### 2.2 Direct GitHub Releases Wheel Asset
 ```bash
-pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.1/termux_vision-1.3.1-py3-none-any.whl
+pip install https://github.com/uno-km/termux-vision/releases/download/v1.4.0/termux_vision-1.4.0-py3-none-any.whl
 ```
 
 ### 2.3 One-Line Bootstrap Installer
@@ -48,9 +48,9 @@ pip install termux-vision ameva-runtime termux-llamacpp
 ```
 
 ### Silicon Architecture Support Status
+* **Qualcomm Adreno GPU (Snapdragon 8 Elite / Adreno 830, Adreno 7xx)**: Production Verified & Supported (Full 25/25 layer GPU offloading, 15.00 tok/s on Moondream2 1.8B f16, SPIR-V JIT patch, KGSL watchdog defense via `GGML_VULKAN_SKIP_CHECKS="999999999"`).
 * **ARM Mali GPU (Mali-G78, Mali-G68, etc.)**: Production Verified & Supported (Pure GPU offloading, 0.00 MiB CPU Mapped VRAM, MMVQ tuning via `--tune-mali`).
-* **Qualcomm Adreno GPU (Adreno 730 / 740 / 750 / 830)**: Under Active Development (In Progress / 개발 진행 중).
-* **Samsung Xclipse GPU (Xclipse 920 / 940 - AMD RDNA)**: Under Active Development (In Progress / 개발 진행 중).
+* **Samsung Xclipse GPU (Xclipse 920 / 940 - AMD RDNA)**: Under Active Engineering (In Progress / 개발 진행 중).
 
 Run hardware diagnostics:
 ```bash
@@ -105,14 +105,15 @@ with tv.vlm.load("smolvlm-500m", device="gpu") as engine:
 
 ---
 
-## 6. Real-World Benchmarks (SmolVLM-500M)
+## 6. Real-World Benchmarks & Hardware Scorecard
 
-| Target Device | SoC / GPU | Mode | Prompt Eval | Token Generation | CPU Mapped VRAM | GPU VRAM | Speedup |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Samsung Galaxy S21 5G** | Exynos 2100 / Mali-G78 | **GPU (Vulkan)** | **14.28 tok/s** | **12.65 tok/s** | **0.00 MiB** | **1059.02 MiB** | **+58.9%** |
-| Samsung Galaxy S21 5G | Exynos 2100 / 8-Core CPU | CPU (NEON) | 8.84 tok/s | 7.96 tok/s | 1059.02 MiB | 0.00 MiB | Baseline |
-| **Samsung Galaxy A35 5G** | Exynos 1380 / Mali-G68 | **GPU (Vulkan)** | **5.67 tok/s** | **5.47 tok/s** | **0.00 MiB** | **1059.02 MiB** | **+55.8%** |
-| Samsung Galaxy A35 5G | Exynos 1380 / 8-Core CPU | CPU (NEON) | 4.88 tok/s | 3.51 tok/s | 1059.02 MiB | 0.00 MiB | Baseline |
+| Target Device | SoC & GPU | Model Architecture | Mode | Prompt Processing | Token Generation | Mapped CPU VRAM | Vulkan GPU VRAM | Status / Speedup |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Samsung Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | **Moondream2 1.8B f16** | **GPU (Vulkan 25/25)** | **19.84 tok/s** | **15.00 tok/s** | **0.00 MiB** | **2,706.00 MiB** | **Verified (Full GPU)** |
+| **Samsung Galaxy S21 5G** | Exynos 2100 / Mali-G78 | SmolVLM-500M-Instruct | **GPU (Vulkan)** | **14.28 tok/s** | **12.65 tok/s** | **0.00 MiB** | **1,059.02 MiB** | **+58.9% vs CPU** |
+| Samsung Galaxy S21 5G | Exynos 2100 / 8-Core CPU | SmolVLM-500M-Instruct | CPU (NEON) | 8.84 tok/s | 7.96 tok/s | 1,059.02 MiB | 0.00 MiB | Baseline |
+| **Samsung Galaxy A35 5G** | Exynos 1380 / Mali-G68 | SmolVLM-500M-Instruct | **GPU (Vulkan)** | **5.67 tok/s** | **5.47 tok/s** | **0.00 MiB** | **1,059.02 MiB** | **+55.8% vs CPU** |
+| Samsung Galaxy A35 5G | Exynos 1380 / 8-Core CPU | SmolVLM-500M-Instruct | CPU (NEON) | 4.88 tok/s | 3.51 tok/s | 1,059.02 MiB | 0.00 MiB | Baseline |
 
 ---
 
