@@ -15,13 +15,18 @@ class ZeroFlickerEngine:
         self,
         text_model_path: str,
         vision_model_path: str,
-        threads: int = 4,
-        eco_mode: bool = True,
+        threads: Optional[int] = None,
+        eco_mode: bool = False,
         use_vulkan: bool = False
     ):
         self.text_model_path = text_model_path
         self.vision_model_path = vision_model_path
-        self.threads = min(4, threads) if eco_mode else threads
+        if threads is not None:
+            self.threads = threads
+        elif eco_mode:
+            self.threads = 4
+        else:
+            self.threads = min(6, os.cpu_count() or 4)
         self.eco_mode = eco_mode
         self.use_vulkan = use_vulkan
 
@@ -31,7 +36,13 @@ class ZeroFlickerEngine:
         prompt: str,
         max_tokens: int = 200,
         temperature: float = 0.6,
-        repeat_penalty: float = 1.25
+        repeat_penalty: float = 1.25,
+        batch_size: int = 64,
+        ubatch_size: Optional[int] = None,
+        flash_attn: bool = False,
+        no_mmproj_offload: bool = True,
+        context_limit: int = 1024,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Executes single-turn multimodal generation.
@@ -93,16 +104,16 @@ class ZeroFlickerEngine:
                     prompt_file=prompt_path,
                     target_backend="vulkan" if self.use_vulkan else "cpu",
                     threads=self.threads,
-                    context_limit=1024,
+                    context_limit=context_limit,
                     max_tokens=max_tokens,
                     temperature=temperature,
                     repeat_penalty=repeat_penalty,
                     pure_gpu=True,
                     fit_off=True,
-                    batch_size=64,
-                    ubatch_size=64,
-                    flash_attn=False,
-                    no_mmproj_offload=True,
+                    batch_size=batch_size,
+                    ubatch_size=ubatch_size,
+                    flash_attn=flash_attn,
+                    no_mmproj_offload=no_mmproj_offload,
                 )
             except ImportError:
                 cli_cmd = [
@@ -112,16 +123,18 @@ class ZeroFlickerEngine:
                     "--image", image_path,
                     "-f", prompt_path,
                     "-t", str(self.threads),
-                    "-c", "1024",
+                    "-c", str(context_limit),
                     "-n", str(max_tokens),
                     "--temp", str(temperature),
                     "--repeat-penalty", str(repeat_penalty),
                     "-ngl", "99" if self.use_vulkan else "0",
-                    "-b", "64",
-                    "-ub", "64",
-                    "-fa", "off",
-                    "--no-mmproj-offload",
+                    "-b", str(batch_size),
+                    "-ub", str(ubatch_size if ubatch_size is not None else batch_size),
                 ]
+                if not flash_attn:
+                    cli_cmd.extend(["-fa", "off"])
+                if no_mmproj_offload:
+                    cli_cmd.append("--no-mmproj-offload")
                 if self.use_vulkan:
                     cli_cmd.extend(["-ot", "token_embd.weight=Vulkan0", "-fit", "off"])
 
