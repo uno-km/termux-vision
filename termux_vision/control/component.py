@@ -305,3 +305,85 @@ class VisionControl(ComponentControl):
             "ready": _ready, "degraded": not _ready, **ts,
             "active_models": [i.model_id for i in hot], "last_error": last_error,
         })
+
+    async def analyze(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Execute on-device vision analysis (VLM multimodal QA/captioning, Canny, or face detection)."""
+        task = request.get("task", "caption")
+        image_path = request.get("image_path")
+        if not image_path:
+            return {"ok": False, "error": {"code": "IMAGE_PATH_MISSING", "message": "image_path is required"}}
+
+        if task in ("caption", "vlm"):
+            from termux_vision.vlm.api import load
+            model_id = request.get("model_id") or "smolvlm-500m"
+            prompt = request.get("prompt") or "Describe this image in detail."
+            device = request.get("device") or "auto"
+            quality = request.get("quality", "optimal")
+            max_tokens = int(request.get("max_tokens", 150))
+
+            try:
+                with load(model_id=model_id, device=device) as engine:
+                    res = engine.describe(image_path, prompt=prompt, quality=quality, max_tokens=max_tokens)
+                    metrics_dict = res.metrics.to_dict() if res.metrics else {}
+                    return {
+                        "ok": True,
+                        "task": task,
+                        "result": {
+                            "text": res.text,
+                            "metrics": metrics_dict,
+                            "model_id": model_id,
+                        },
+                        "fallback_used": False,
+                        "requested_backend": device,
+                        "executed_backend": res.metrics.backend if res.metrics else "unknown",
+                    }
+            except Exception as e:
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "VLM_INFERENCE_ERROR",
+                        "message": str(e),
+                    }
+                }
+        elif task == "canny":
+            from termux_vision.io.loader import load_image, save_image
+            from termux_vision.transforms.functional import to_grayscale
+            from termux_vision.cv.filters import canny
+            try:
+                img = load_image(image_path)
+                gray = to_grayscale(img)
+                low = float(request.get("low", 40.0))
+                high = float(request.get("high", 120.0))
+                edges = canny(gray, low_threshold=low, high_threshold=high)
+                output_path = request.get("output_path")
+                if output_path:
+                    save_image(edges, output_path)
+                return {
+                    "ok": True,
+                    "task": "canny",
+                    "result": {"output_path": output_path, "edge_pixels": int(edges.sum() > 0)},
+                    "fallback_used": False,
+                    "executed_backend": "cpu_neon",
+                }
+            except Exception as e:
+                return {"ok": False, "error": {"code": "CANNY_ERROR", "message": str(e)}}
+        elif task == "detect":
+            from termux_vision.io.loader import load_image
+            from termux_vision.detect.haar import detect_faces
+            try:
+                img = load_image(image_path)
+                detections = detect_faces(img)
+                return {
+                    "ok": True,
+                    "task": "detect",
+                    "result": {
+                        "count": len(detections),
+                        "detections": [{"bbox": d.bbox.to_xywh(), "score": d.score} for d in detections]
+                    },
+                    "fallback_used": False,
+                    "executed_backend": "cpu_neon",
+                }
+            except Exception as e:
+                return {"ok": False, "error": {"code": "DETECT_ERROR", "message": str(e)}}
+        else:
+            return {"ok": False, "error": {"code": "UNSUPPORTED_TASK", "message": f"Task '{task}' is not supported"}}

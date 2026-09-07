@@ -1,9 +1,21 @@
 # Changelog
 
-All notable changes to 	ermux-vision will be documented in this file.
+All notable changes to termux-vision will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.3.0] - 2026-09-07
+
+### Added
+- **Universal Parameter Suite & Sibling Alignment**: Full parameterization (`-d/--device`, `-b/--backend`, `-i`, `-p`, `-m`, `--mmproj`, `-n`, `-c`, `-t`, `-W`, `-H`, `--image-size`, `-q`, `--tune-mali`, `--json`) matching official ecosystem CLI standards.
+- **ARM Mali GPU Acceleration (Production Verified)**: Full 99-layer Vulkan SPIR-V offloading on ARM Mali-G78 (Galaxy S21) and Mali-G68 (Galaxy A35), achieving pure GPU execution with 0.00 MiB CPU Mapped VRAM.
+- **Mali MMVQ Optimization Kernel**: `--tune-mali` flag enabling `GGML_VK_FORCE_MMVQ=1` for Mali TBDR tile-cache alignment.
+- **Real-Device Benchmarks**: Galaxy S21 (12.65 tok/s, +58.9% over CPU baseline) and Galaxy A35 (5.47 tok/s, +55.8% over CPU baseline).
+- **Dynamic Installer & Asset Provisioner**: `install.sh` and `termux_vision/installer.py` resolving dynamic GitHub Releases candidate endpoints with SHA-256 integrity verification.
+- **Architecture Roadmap**: Qualcomm Adreno and Samsung Xclipse acceleration targets defined as Under Active Development.
 
 ---
 

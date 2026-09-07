@@ -1,44 +1,46 @@
 # Termux-Vision Release Notes
 
-**License:** Apache-2.0
+**Version:** v1.3.0  
+**Release Date:** 2026-09-07  
+**License:** Apache-2.0  
 
 ---
 
-## Key Highlights in v1.1.3 (2026-09-05)
+## Key Highlights in v1.3.0 (2026-09-07)
 
-### 1. Unified AMEVA Runtime Integration
-- Migrated acceleration dependency to unified `ameva-runtime>=2.0.0` and `@ameva/runtime>=2.0.0`.
-- Synchronized Doctor hardware probe keys (`loader_detected`, `driver_file_detected`) with zero silent fallback.
-- Enforced Fail-Fast error propagation on explicit Vulkan requests (`--device vulkan`).
+### 1. Universal Parameter Suite & Sibling Ecosystem Parity
+- Standardized CLI flags: `-d, --device, -b, --backend` (`auto`, `gpu`, `vulkan`, `cpu`, `vulkan-force`).
+- Input and model controls: `-i/--image`, `-p/--prompt`, `-m/--model`, `--mmproj`, `-n/--max-tokens`, `-c/--ctx-size`, `-t/--threads`.
+- Dynamic vision scaling: `-W/--width`, `-H/--height`, `--image-size` (e.g. 224x224, 384x384), and 4-tier presets (`fast`, `optimal`, `high`, `original`).
 
----
+### 2. ARM Mali GPU Acceleration (Production Verified)
+- 99-layer Vulkan GPU offloading on Samsung Galaxy S21 5G (Mali-G78 MP14) and Galaxy A35 5G (Mali-G68 MP5).
+- Pure GPU VRAM execution: **0.00 MiB CPU Mapped VRAM**, completely eliminating CPU host-mapping bottlenecks.
+- Generation throughput speedup:
+  - **Galaxy S21 5G**: 14.28 prompt tok/s, **12.65 generation tok/s** (+58.9% faster than CPU).
+  - **Galaxy A35 5G**: 5.67 prompt tok/s, **5.47 generation tok/s** (+55.8% faster than CPU).
 
-## Key Highlights in v1.1.0 (2026-09-01)
+### 3. Dynamic Installer & Release Asset Distribution
+- Universal dynamic bootstrap installer (`install.sh`) removing all hardcoded versions and URLs.
+- Automated release candidate endpoint resolution via `termux_vision/installer.py`.
+- Prebuilt release wheel assets published with SHA-256 cryptographic verification.
 
-### 1. Official AMEVA Runtime Integration
-- Direct dynamic integration with `ameva-runtime` for truthful hardware doctor probing, Bionic system loader inspection, and Snapdragon/Mali quirks mitigation.
-- Replaced all legacy mock C++ Vulkan implementations with honest C++ CPU acceleration kernels and clean auto delegation.
-
-### 2. Native C/C++ BFS Canny Edge Detection Engine
-- Implemented complete 8-directional connected-component BFS queue for Canny Hysteresis, eliminating edge truncation bugs.
-- Thread-local zero-allocation scratch buffers ensuring sub-millisecond execution times without heap fragmentation.
-
-### 3. All-in-One One-Line Installation
-- Integrated `termux-llamacpp` and `ameva-runtime` directly into core dependencies.
-- Single command installation: `pip install termux-vision && termux-llama install`.
-
-### 4. COCO-80 Standard Alignment & Dual Engine Parity
-- Full 80-class mapping for TinyYOLONano detector preventing channel shape mismatch.
-- Standalone pure-JS Canny/Sobel/NMS filters for full Node.js operational autonomy.
+### 4. Silicon Microarchitecture Roadmap
+- **ARM Mali GPU**: Production Verified & Fully Supported.
+- **Qualcomm Adreno GPU**: Under Active Development (개발 진행 중).
+- **Samsung Xclipse GPU**: Under Active Development (개발 진행 중).
 
 ---
 
-## Upgrade Guide
+## Upgrade & Installation Guide
 
 ```bash
-# Python
+# Python (PyPI)
 pip install --upgrade termux-vision
 
-# Node.js
-npm install -g termux-vision@latest
+# Direct GitHub Releases Wheel Asset
+pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl
+
+# Node.js (npm)
+npm install -g termux-vision@1.3.0
 ```

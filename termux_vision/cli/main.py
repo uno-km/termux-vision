@@ -165,7 +165,7 @@ def main():
     p_vlm.add_argument("-p", "--prompt", default=None, help="Text prompt query")
     p_vlm.add_argument("-m", "--model", default=None, help="Model ID, catalog preset, or path to custom .gguf model")
     p_vlm.add_argument("--mmproj", default=None, help="Path to vision projector model (mmproj-*.gguf)")
-    p_vlm.add_argument("--device", default="auto", choices=["auto", "cpu", "vulkan", "gpu", "vulkan-force"], help="Device backend")
+    p_vlm.add_argument("-d", "--device", "-b", "--backend", dest="device", default="auto", choices=["auto", "cpu", "vulkan", "gpu", "vulkan-force"], help="Device backend")
     p_vlm.add_argument("--runtime", default=None, help="Explicit path to llama-cli executable")
     p_vlm.add_argument("--memory-policy", default="warn", choices=["warn", "strict", "unrestricted"], help="Memory admission policy")
     p_vlm.add_argument("--allow-download", action="store_true", help="Automatically download model if missing from cache")

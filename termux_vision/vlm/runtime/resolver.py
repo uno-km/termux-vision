@@ -112,25 +112,30 @@ def resolve_llama_cli(
             source="environment",
         )
 
-    # 3. PATH lookup
-    discovered = shutil.which(DEFAULT_RUNTIME_NAME)
-    if discovered:
-        resolved = os.path.abspath(discovered)
-        return RuntimeInfo(
-            executable=resolved,
-            version=_get_runtime_version(resolved),
-            source="path",
-        )
+    # 3. PATH lookup (Multimodal & LLM runtimes)
+    for name in ("llama-mtmd-cli", "llama-cli"):
+        discovered = shutil.which(name)
+        if discovered:
+            resolved = os.path.abspath(discovered)
+            return RuntimeInfo(
+                executable=resolved,
+                version=_get_runtime_version(resolved),
+                source="path",
+            )
 
     # 4. Known Termux / Linux paths (SSOT Standard)
     prefix = environment.get("PREFIX", "/data/data/com.termux/files/usr")
     candidates = (
+        os.path.expanduser("~/.termux-llama/current/bin/llama-mtmd-cli"),
         os.path.expanduser("~/.termux-llama/current/bin/llama-cli"),
+        os.path.expanduser("~/.termux-llamacpp/current/bin/llama-mtmd-cli"),
         os.path.expanduser("~/.termux-llamacpp/current/bin/llama-cli"),
+        os.path.join(prefix, "bin", "llama-mtmd-cli"),
         os.path.join(prefix, "bin", "llama-cli"),
         os.path.join(prefix, "bin", "termux-llama-cli"),
-        os.path.join(prefix, "bin", "llama-mtmd-cli"),
+        os.path.expanduser("~/.local/bin/llama-mtmd-cli"),
         os.path.expanduser("~/.local/bin/llama-cli"),
+        os.path.expanduser("~/bin/llama-mtmd-cli"),
         os.path.expanduser("~/bin/llama-cli"),
     )
 

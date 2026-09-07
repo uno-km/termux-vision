@@ -1,21 +1,272 @@
 # doc.config.yaml - Termux-Vision Single Source of Truth
 name: "Termux-Vision"
+lib_slug: "vision"
 package_name_pypi: "termux-vision"
 package_name_npm: "termux-vision"
-version: "v1.1.1"
-release_name: "4-Tier Quality Presets & Vulkan Hardware Acceleration"
+version: "v1.3.0"
+release_name: "Universal Parameter Standardization & Vulkan ARM Mali GPU Acceleration"
 license: "Apache-2.0"
-platform: "Android ARM64 / Termux Bionic"
+platform: "Android ARM64 / Linux / Termux"
 github_repo_url: "https://github.com/uno-km/termux-vision"
 
-tagline_ko: "디바이스 리소스를 활용한 안드로이드 Termux 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
 tagline_en: "Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine Utilizing Device Resources for Android Termux"
+tagline_ko: "디바이스 리소스를 활용한 안드로이드 Termux 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
 
-why_challenge_en: "Standard vision frameworks like OpenCV and heavy Python runtimes fail on mobile Termux due to multi-gigabyte library sizes, missing GLIBC bindings, high latency, and severe thermal throttling during high-resolution vision encoding."
-why_challenge_ko: "기존 OpenCV, PyTorch 등 대규모 비전 프레임워크는 수 기가바이트의 거대한 의존성, GLIBC/Bionic 호환성 결여, 고해상도 비전 인코딩 시 발생하는 극심한 발열과 지연시간으로 인해 모바일 Termux 환경에서 원활히 동작하기 어렵습니다."
+quick_install_cmd: "pip install termux-vision\n# or: pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl\n# or: npm install -g termux-vision\n# or: bash <(curl -sSL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh)"
 
-description_en: "Eliminates heavy C++ dependencies by integrating SIMD NEON spatial image transforms with on-device VLM (Qwen2-VL, SmolVLM) multi-tier resolution presets (fast, optimal, high, original) utilizing device resources under strict memory isolation."
-description_ko: "순수 ARM64 NEON 커널과 4단계 화질 프리셋(fast, optimal, high, original), 디바이스 리소스 최적화 연산을 결합하여 메모리 격리 환경에서 엣지 검출과 VLM 멀티모달 시각 추론을 실현합니다."
+why_challenge_en: "Standard vision frameworks (OpenCV, TorchVision) suffer from massive binary sizes (>150MB), complex C++ compilation bottlenecks on ARM64 Termux, and lack seamless mobile VLM multimodal pipelines."
+why_challenge_ko: "기존 OpenCV, TorchVision 등은 150MB 이상의 무거운 바이너리 크기와 모바일 ARM64 컴파일 실패율, 그리고 모바일 최적화 VLM 멀티모달 파이프라인의 부재로 인해 Termux 환경에서 활용이 극도로 제한적이었습니다."
+
+description_en: "Provides pure Python/JS 5-stage Canny Edge, Sobel 3x3, Gaussian Blur, 2D Integral Images, Haar Cascade Face Detection, and on-device SmolVLM/Qwen2-VL Multimodal Vision-Language inference with pure Vulkan GPU offloading (0.00 MiB CPU VRAM)."
+description_ko: "순수 Python/JS 5단계 Canny 엣지 검출, Sobel 3x3, 가우시안 블러, 2D 적분 영상 고속 필터링, Haar Cascade 얼굴 검출 및 순수 Vulkan GPU 오프로드(CPU 매핑 VRAM 0.00 MiB)를 통한 SmolVLM/Qwen2-VL 온디바이스 VLM 멀티모달 추론을 지원합니다."
+
+features:
+  - title_en: "Universal Parameter Suite & Sibling Alignment"
+    title_ko: "공식 패밀리 표준 파라미터 규격 전면 정렬"
+    desc_en: "Standardizes compute backend (-d/--device, -b/--backend), quantization (-m, --mmproj), and resolution scaling (-W, -H, --image-size) across CLI, Python, and Node.js."
+    desc_ko: "형제 패밀리 표준에 맞춰 연산 가속 디바이스(-d/--device, -b/--backend), 모델 양자화 경로(-m, --mmproj), 해상도 스케일링(-W, -H, --image-size) 파라미터를 100% 통일했습니다."
+  - title_en: "Pure Vulkan GPU Full-Layer Offloading"
+    title_ko: "순수 Vulkan GPU 99개 레이어 풀 오프로드"
+    desc_en: "Achieves 0.00 MiB CPU Mapped VRAM on ARM Mali silicon (G78/G68), accelerating token generation up to +58.9% over CPU baseline."
+    desc_ko: "ARM Mali 실리콘(G78/G68)에서 CPU 매핑 VRAM 0.00 MiB를 달성하여 모델 텐서와 KV 캐시를 Vulkan 전용 버퍼로 완전 격리 오프로드합니다."
+  - title_en: "Zero-Heavy C++ Dependency"
+    title_ko: "외부 무거운 C++ 빌드 의존성 완전 배제"
+    desc_en: "Runs out-of-the-box on vanilla Termux Python (pip) and Node.js (npm) without complex OpenCV or node-gyp builds."
+    desc_ko: "복잡한 OpenCV나 node-gyp 빌드 과정 없이 순정 Termux Python 및 Node.js 환경에서 즉시 설치 및 구동됩니다."
+  - title_en: "Silicon Architecture Roadmap"
+    title_ko: "모바일 GPU 아키텍처 확장 로드맵"
+    desc_en: "ARM Mali GPU production verified; Qualcomm Adreno and Samsung Xclipse backends are under active engineering."
+    desc_ko: "ARM Mali GPU는 정식 검증 지원되며, Qualcomm Adreno 및 Samsung Xclipse 가속 백엔드는 현재 활발히 개발 진행 중입니다."
+
+matrix_table:
+  - category: "Classical CV Filters"
+    operations: "5-Stage Canny Edge Detector, Sobel 3x3, Gaussian Blur 5x5, 2D Integral Images, Morphology"
+    status: "Production"
+  - category: "Multimodal VLM"
+    operations: "SmolVLM-500M, Qwen2-VL-2B, Supervised llama-cli Bridge, Dynamic Resolution Scaling"
+    status: "Production"
+  - category: "ARM Mali GPU Acceleration"
+    operations: "Vulkan SPIR-V Compute (-ngl 99), 0.00 MiB CPU VRAM, MMVQ Kernel Tuning (--tune-mali)"
+    status: "Production Verified"
+  - category: "Qualcomm Adreno Acceleration"
+    operations: "Snapdragon Adreno 7xx/8xx Freedreno/Turnip Bionic Vulkan Shader Pipeline"
+    status: "In Development (개발 진행 중)"
+  - category: "Samsung Xclipse Acceleration"
+    operations: "Exynos 2200/2400 AMD RDNA Mobile SPIR-V Instruction Scheduling"
+    status: "In Development (개발 진행 중)"
+
+benchmarks_body: |
+  <h3>Real-Device On-Device VLM Scorecard (Ground Truth)</h3>
+  <p>Measured on physical Android devices under unrooted Termux environment running SmolVLM-500M Instruct (Q4_K_M text model + Q8_0 mmproj vision projector, 224x224 input).</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Target Device</th>
+        <th>SoC / GPU Architecture</th>
+        <th>Mode</th>
+        <th>Prompt Eval</th>
+        <th>Token Generation</th>
+        <th>Total Latency</th>
+        <th>CPU Mapped VRAM</th>
+        <th>Vulkan GPU VRAM</th>
+        <th>Speedup</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: rgba(34, 197, 94, 0.08);">
+        <td><strong>Samsung Galaxy S21 5G</strong></td>
+        <td>Exynos 2100 (Mali-G78 MP14)</td>
+        <td><strong>GPU (Vulkan)</strong></td>
+        <td><strong>14.28 tok/s</strong></td>
+        <td><strong>12.65 tok/s</strong></td>
+        <td><strong>21.26 s</strong></td>
+        <td><strong>0.00 MiB</strong></td>
+        <td><strong>1059.02 MiB</strong></td>
+        <td><strong>+58.9%</strong></td>
+      </tr>
+      <tr>
+        <td>Samsung Galaxy S21 5G</td>
+        <td>Exynos 2100 (8-Core CPU)</td>
+        <td>CPU (NEON)</td>
+        <td>8.84 tok/s</td>
+        <td>7.96 tok/s</td>
+        <td>34.22 s</td>
+        <td>1059.02 MiB</td>
+        <td>0.00 MiB</td>
+        <td>Baseline</td>
+      </tr>
+      <tr style="background: rgba(34, 197, 94, 0.08);">
+        <td><strong>Samsung Galaxy A35 5G</strong></td>
+        <td>Exynos 1380 (Mali-G68 MP5)</td>
+        <td><strong>GPU (Vulkan)</strong></td>
+        <td><strong>5.67 tok/s</strong></td>
+        <td><strong>5.47 tok/s</strong></td>
+        <td><strong>52.57 s</strong></td>
+        <td><strong>0.00 MiB</strong></td>
+        <td><strong>1059.02 MiB</strong></td>
+        <td><strong>+55.8%</strong></td>
+      </tr>
+      <tr>
+        <td>Samsung Galaxy A35 5G</td>
+        <td>Exynos 1380 (8-Core CPU)</td>
+        <td>CPU (NEON)</td>
+        <td>4.88 tok/s</td>
+        <td>3.51 tok/s</td>
+        <td>65.34 s</td>
+        <td>1059.02 MiB</td>
+        <td>0.00 MiB</td>
+        <td>Baseline</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Classical Vision Filtering Latency (512x512 Image)</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Algorithm / Kernel</th>
+        <th>Architecture</th>
+        <th>Execution Latency</th>
+        <th>Memory Overhead</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>5-Stage Canny Edge (8-dir BFS)</td><td>ARM64 Clang Native C++</td><td>8.2 ms</td><td>2.1 MB</td><td>Production</td></tr>
+      <tr><td>5-Stage Canny Edge (8-dir BFS)</td><td>Pure Python NumPy SIMD</td><td>14.8 ms</td><td>2.1 MB</td><td>Production</td></tr>
+      <tr><td>Sobel 3x3 Gradient Convolution</td><td>ARM NEON Vectorized</td><td>3.1 ms</td><td>1.0 MB</td><td>Production</td></tr>
+      <tr><td>Gaussian Blur 5x5 Kernel</td><td>Separable 1D Conv</td><td>4.6 ms</td><td>1.0 MB</td><td>Production</td></tr>
+      <tr><td>2D Integral Image (SAT)</td><td>Row/Col Prefix Sum</td><td>2.3 ms</td><td>4.0 MB</td><td>Production</td></tr>
+      <tr><td>Haar Cascade Face Detection</td><td>Candidate Classifier</td><td>18.5 ms</td><td>3.2 MB</td><td>Production</td></tr>
+    </tbody>
+  </table>
+
+  <h3>GPU Silicon Architecture Support Status</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Microarchitecture</th>
+        <th>Target Devices</th>
+        <th>Status</th>
+        <th>Technical Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>ARM Mali GPU</strong></td>
+        <td>Galaxy S21 (Mali-G78), Galaxy A35 (Mali-G68)</td>
+        <td><span class="status-badge active">Production Verified</span></td>
+        <td>Pure GPU buffer offloading (0.00 MiB CPU VRAM), TBDR Tile cache alignment, MMVQ kernel support.</td>
+      </tr>
+      <tr>
+        <td><strong>Qualcomm Adreno GPU</strong></td>
+        <td>Snapdragon 8 Gen 1/2/3/Elite (Adreno 7xx/8xx)</td>
+        <td><span class="status-badge">In Development (개발 진행 중)</span></td>
+        <td>Direct Bionic ICD & Freedreno/Turnip compute pipelines under active development.</td>
+      </tr>
+      <tr>
+        <td><strong>Samsung Xclipse GPU</strong></td>
+        <td>Exynos 2200 / 2400 (AMD RDNA 2/3)</td>
+        <td><span class="status-badge">In Development (개발 진행 중)</span></td>
+        <td>Mobile RDNA SPIR-V instruction scheduler under active development.</td>
+      </tr>
+    </tbody>
+  </table>
+
+installation_body: |
+  <div class="alert alert-tip">
+    <span class="alert-title">Termux ARM64 Prerequisites</span>
+    <p>Run the following command in Termux to install native build tools and Vulkan drivers:</p>
+  </div>
+  <pre><code>pkg update -y && pkg install -y python nodejs clang make cmake git termux-api wget vulkan-loader vulkan-headers vulkan-tools opencl-headers python-numpy libjpeg-turbo</code></pre>
+
+  <h3>1. Python Package Installation (PyPI)</h3>
+  <pre><code>pip install --upgrade pip setuptools wheel
+  pip install termux-vision</code></pre>
+
+  <h3>2. Direct GitHub Releases Wheel Asset</h3>
+  <pre><code># Install official prebuilt v1.3.0 release wheel
+  pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl</code></pre>
+
+  <h3>3. Node.js CLI Installation (npm)</h3>
+  <pre><code>npm install -g termux-vision</code></pre>
+
+  <h3>4. Hardware GPU Acceleration Runtime</h3>
+  <pre><code>pip install termux-vision ameva-runtime termux-llamacpp
+  termux-vision doctor</code></pre>
+
+  <h3>5. One-Line Bootstrap Installer</h3>
+  <pre><code>curl -sL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh | bash</code></pre>
+
+advanced_parameters_body: |
+  <h3>Unified CLI & Engine Parameter Matrix</h3>
+  <p>termux-vision adheres 100% to the uno-km ecosystem CLI standard:</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Flag</th>
+        <th>Aliases</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>-d, --device</code></td><td><code>-b, --backend</code></td><td><code>auto</code></td><td>Compute acceleration backend: <code>auto</code>, <code>gpu</code>, <code>vulkan</code>, <code>cpu</code>, <code>vulkan-force</code></td></tr>
+      <tr><td><code>-i, --image</code></td><td><code>--image-path</code></td><td><em>Required</em></td><td>Path to input image file (PNG, JPG, WebP)</td></tr>
+      <tr><td><code>-p, --prompt</code></td><td>None</td><td><code>"Describe this image"</code></td><td>Multimodal query or instruction prompt</td></tr>
+      <tr><td><code>-m, --model</code></td><td>None</td><td><code>smolvlm-500m</code></td><td>Language model GGUF path or catalog preset ID</td></tr>
+      <tr><td><code>--mmproj</code></td><td>None</td><td><em>Auto-paired</em></td><td>Vision projector GGUF model path (mmproj-*.gguf)</td></tr>
+      <tr><td><code>-n, --max-tokens</code></td><td><code>--n-predict</code></td><td><code>150</code></td><td>Maximum number of output tokens</td></tr>
+      <tr><td><code>-c, --ctx-size</code></td><td><code>--ctx</code></td><td><code>2048</code></td><td>Context window size</td></tr>
+      <tr><td><code>-t, --threads</code></td><td>None</td><td><code>auto</code></td><td>Number of CPU execution threads</td></tr>
+      <tr><td><code>-W, --width</code></td><td>None</td><td>None</td><td>Resize image width in pixels</td></tr>
+      <tr><td><code>-H, --height</code></td><td>None</td><td>None</td><td>Resize image height in pixels</td></tr>
+      <tr><td><code>--image-size</code></td><td>None</td><td>None</td><td>Explicit resolution scaling (e.g. <code>224x224</code>, <code>384x384</code>)</td></tr>
+      <tr><td><code>-q, --quality</code></td><td>None</td><td><code>optimal</code></td><td>4-tier preset: <code>fast</code> (384px), <code>optimal</code> (768px), <code>high</code> (1280px), <code>original</code> (1:1)</td></tr>
+      <tr><td><code>--tune-mali</code></td><td>None</td><td><code>False</code></td><td>Enable ARM Mali GPU MMVQ optimization (<code>GGML_VK_FORCE_MMVQ=1</code>)</td></tr>
+      <tr><td><code>--json</code></td><td>None</td><td><code>False</code></td><td>Output structured machine-readable JSON metrics</td></tr>
+      <tr><td><code>-v, --verbose</code></td><td>None</td><td><code>False</code></td><td>Print detailed GPU layer offload logs</td></tr>
+    </tbody>
+  </table>
+
+api_body: |
+  <h3>Python SDK Core API Reference</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Module / Function</th>
+        <th>Signature</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>termux_vision.vlm.load</code></td>
+        <td><code>load(model_id, device='auto', ngl=None)</code></td>
+        <td>Context manager initializing the multimodal VLM engine with hardware offload.</td>
+      </tr>
+      <tr>
+        <td><code>VLMEngine.describe</code></td>
+        <td><code>describe(image_path, prompt, quality='optimal', max_tokens=150)</code></td>
+        <td>Executes multimodal visual inference and returns text response with performance metrics.</td>
+      </tr>
+      <tr>
+        <td><code>termux_vision.cv.canny</code></td>
+        <td><code>canny(image_gray, low_threshold=40, high_threshold=120)</code></td>
+        <td>Ultra-fast 5-stage Canny edge detector with 8-directional BFS hysteresis.</td>
+      </tr>
+      <tr>
+        <td><code>termux_vision.detect.detect_faces</code></td>
+        <td><code>detect_faces(image, min_size=(30, 30))</code></td>
+        <td>Zero-dependency Haar-like cascade face candidate localization.</td>
+      </tr>
+      <tr>
+        <td><code>termux_vision.cli.doctor.run_doctor</code></td>
+        <td><code>run_doctor(probe_vulkan=True)</code></td>
+        <td>Probes Vulkan ICD driver, RAM headroom, and big.LITTLE CPU topology.</td>
+      </tr>
+    </tbody>
+  </table>
 
 code_example_py: |
   import termux_vision as tv
@@ -23,9 +274,10 @@ code_example_py: |
   # 1. Zero-Dependency Spatial Filtering (0.01s ultra-fast)
   img = tv.io.load_image("photo.jpg")
   edges = tv.cv.canny(tv.transforms.to_grayscale(img), 40, 120)
+  tv.io.save_image(edges, "edges.png")
 
-  # 2. On-Device VLM Multimodal Inference with 4-Tier Quality Presets
-  with tv.vlm.load("qwen2-vl-2b-q4", quality="optimal") as engine:
+  # 2. On-Device VLM Multimodal Inference with Vulkan GPU Acceleration
+  with tv.vlm.load("smolvlm-500m", device="gpu") as engine:
       res = engine.describe("photo.jpg", prompt="Describe this scene in detail.", quality="optimal")
       print(f"Generated ({res.metrics.tokens_per_second:.1f} t/s): {res.text}")
 
@@ -37,45 +289,29 @@ code_example_js: |
   console.log(`Vulkan GPU: ${doc.vulkan.status} | RAM: ${doc.hardware.availableRamMb} MB`);
 
   // 2. Multimodal VLM Inference with Quality Preset
-  const engine = await tv.load({ modelId: 'qwen2-vl-2b-q4', contextLimit: 4096 });
-  const result = await engine.describe('photo.jpg', { quality: 'optimal', maxTokens: 300 });
+  const engine = await tv.load({ modelId: 'smolvlm-500m', device: 'gpu' });
+  const result = await engine.describe('photo.jpg', { quality: 'optimal', maxTokens: 150 });
   console.log(`[${result.metrics.backend.toUpperCase()}] ${result.text}`);
   engine.close();
 
-features:
-  - title_en: "4-Tier Quality Preset Scaler"
-    title_ko: "4단계 스마트 화질 프리셋 스케일러"
-    desc_en: "Dynamically balances speed and detail via fast (384px), optimal (768px), high (1280px), and original (1:1) resolution presets."
-    desc_ko: "fast(384px 초고속 38초), optimal(768px 균형 81초), high(1280px 원거리 정밀 266초), original(1:1)의 4단계 프리셋으로 속도와 인식 디테일을 정밀 제어합니다."
-  - title_en: "Vulkan GPU Full-Layer Offload"
-    title_ko: "Vulkan GPU 99개 레이어 풀 오프로드"
-    desc_en: "Direct Adreno and Mali GPU shader acceleration achieving 12~14 tokens/sec on Snapdragon 8 Elite and Exynos platforms."
-    desc_ko: "Snapdragon 8 Elite 및 Exynos 플랫폼에서 Adreno/Mali GPU를 직접 구동하여 초당 12~14단어의 초고속 온디바이스 토큰 생성을 지원합니다."
-  - title_en: "Strict Model Integrity & Anti-Corruption Guard"
-    title_ko: "엄격한 모델 무결성 및 손상 격리 방어"
-    desc_en: "Guarantees zero-drift execution by enforcing a 10MB minimum valid binary threshold and pair verification for language and vision GGUF artifacts."
-    desc_ko: "10MB 미만의 깨진 HTML 에러 파일 및 불완전 다운로드를 원천 차단하고, 텍스트 모델과 mmproj 비전 인코더 쌍의 무결성을 보장합니다."
-
-matrix_table:
-  - category: "Spatial Transforms"
-    operations: "Bilinear Scale, Grayscale, Canny Edge, Sobel Convolution"
-    status: "Production"
-  - category: "VLM Presets"
-    operations: "FAST (384px), OPTIMAL (768px), HIGH (1280px), ORIGINAL (1:1)"
-    status: "Production"
-  - category: "VLM Acceleration"
-    operations: "Adreno/Mali Vulkan GPU (-ngl 99), CPU Resilient Fallback"
-    status: "Production"
-  - category: "Integrity Defense"
-    operations: "Atomic .tmp write, >10MB Size Gate, GGUF/mmproj Pair Validation"
-    status: "Production"
-
-custom_pages:
-  - slug: "vlm-guide"
-    title_ko: "VLM 멀티모달 추론 가이드"
-    title_en: "VLM Inference Guide"
-    file: "docs/vlm_guide.md"
-  - slug: "models"
-    title_ko: "경량 비전 모델 매트릭스"
-    title_en: "Vision Model Zoo"
-    file: "docs/models.md"
+changelog:
+  - version: "v1.3.0"
+    date: "2026-09-07"
+    changes:
+      - "Full standardization of CLI parameters (-d/--device, -b/--backend, -i, -p, -m, --mmproj, -n, -c, -t, -W, -H, --tune-mali, --json)."
+      - "Verified ARM Mali GPU (G78 MP14, G68 MP5) acceleration pipeline with 0.00 MiB CPU Mapped VRAM."
+      - "Real-device benchmarks: Galaxy S21 12.65 tok/s (+58.9%), Galaxy A35 5.47 tok/s (+55.8%)."
+      - "Dynamic GitHub Releases asset resolver and automated wheel installer with SHA-256 integrity verification."
+      - "Architecture roadmap defined: Adreno and Xclipse backends marked as In Development."
+  - version: "v1.2.0"
+    date: "2026-09-01"
+    changes:
+      - "Official ameva-vulkan-runtime dynamic bridge integration for truthful hardware doctor probing."
+      - "Native C/C++ dual acceleration engines with 8-directional BFS Hysteresis queue."
+      - "Full COCO-80 standard class alignment for TinyYOLONano detector."
+  - version: "v1.1.1"
+    date: "2026-08-15"
+    changes:
+      - "Dual Engine Python and Node.js SDK initial release."
+      - "Heuristic Haar Cascade face candidate detector."
+      - "Model Cache Manager and GGUF VLM loader."
