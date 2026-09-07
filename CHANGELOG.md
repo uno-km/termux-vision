@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2026-09-07
+
+### Added
+- Official GitHub Release v1.3.1 asset distribution with verified SHA-256 checksums.
+- Dynamic shields badge integration for PyPI and npm.
+
+### Changed
+- Bumped version to 1.3.1 across pyproject.toml, package.json, installer.py, install.sh, and documentation portals.
+
 ## [1.3.0] - 2026-09-07
 
 ### Added

@@ -3,7 +3,7 @@ name: "Termux-Vision"
 lib_slug: "vision"
 package_name_pypi: "termux-vision"
 package_name_npm: "termux-vision"
-version: "v1.3.0"
+version: "v1.3.1"
 release_name: "Universal Parameter Standardization & Vulkan ARM Mali GPU Acceleration"
 license: "Apache-2.0"
 platform: "Android ARM64 / Linux / Termux"
@@ -12,7 +12,7 @@ github_repo_url: "https://github.com/uno-km/termux-vision"
 tagline_en: "Zero-Dependency On-Device Computer Vision & Multimodal VLM Inference Engine Utilizing Device Resources for Android Termux"
 tagline_ko: "디바이스 리소스를 활용한 안드로이드 Termux 제로 디펜던시 온디바이스 컴퓨터 비전 & VLM 멀티모달 추론 엔진"
 
-quick_install_cmd: "pip install termux-vision\n# or: pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl\n# or: npm install -g termux-vision\n# or: bash <(curl -sSL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh)"
+quick_install_cmd: "pip install termux-vision\n# or: pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.1/termux_vision-1.3.1-py3-none-any.whl\n# or: npm install -g termux-vision\n# or: bash <(curl -sSL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh)"
 
 why_challenge_en: "Standard vision frameworks (OpenCV, TorchVision) suffer from massive binary sizes (>150MB), complex C++ compilation bottlenecks on ARM64 Termux, and lack seamless mobile VLM multimodal pipelines."
 why_challenge_ko: "기존 OpenCV, TorchVision 등은 150MB 이상의 무거운 바이너리 크기와 모바일 ARM64 컴파일 실패율, 그리고 모바일 최적화 VLM 멀티모달 파이프라인의 부재로 인해 Termux 환경에서 활용이 극도로 제한적이었습니다."
@@ -185,8 +185,8 @@ installation_body: |
   pip install termux-vision</code></pre>
 
   <h3>2. Direct GitHub Releases Wheel Asset</h3>
-  <pre><code># Install official prebuilt v1.3.0 release wheel
-  pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl</code></pre>
+  <pre><code># Install official prebuilt v1.3.1 release wheel
+  pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.1/termux_vision-1.3.1-py3-none-any.whl</code></pre>
 
   <h3>3. Node.js CLI Installation (npm)</h3>
   <pre><code>npm install -g termux-vision</code></pre>
@@ -295,7 +295,7 @@ code_example_js: |
   engine.close();
 
 changelog:
-  - version: "v1.3.0"
+  - version: "v1.3.1"
     date: "2026-09-07"
     changes:
       - "Full standardization of CLI parameters (-d/--device, -b/--backend, -i, -p, -m, --mmproj, -n, -c, -t, -W, -H, --tune-mali, --json)."

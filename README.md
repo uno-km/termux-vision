@@ -60,8 +60,8 @@ pkg install -y python nodejs clang make cmake git termux-api wget vulkan-loader 
 
 * **Option B: Direct GitHub Releases Wheel Asset (SSOT Verified)**:
   ```bash
-  # Download and install the prebuilt v1.3.0 release wheel
-  pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.0/termux_vision-1.3.0-py3-none-any.whl
+  # Download and install the prebuilt v1.3.1 release wheel
+  pip install https://github.com/uno-km/termux-vision/releases/download/v1.3.1/termux_vision-1.3.1-py3-none-any.whl
   ```
 
 ### 2.3 Node.js / TypeScript CLI Installation

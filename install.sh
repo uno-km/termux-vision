@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# termux-vision: Universal Dynamic One-Line Bootstrap Installer (v1.3.0)
+# termux-vision: Universal Dynamic One-Line Bootstrap Installer (v1.3.1)
 # Open-Source under Apache License 2.0 (AMEVA Foundation)
 # Usage: curl -sL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh | bash
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${TERMUX_VISION_VERSION:-1.3.0}"
+VERSION="${TERMUX_VISION_VERSION:-1.3.1}"
 REPO="uno-km/termux-vision"
 ARCH="$(uname -m)"
 
