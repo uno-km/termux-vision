@@ -15,7 +15,6 @@ except Exception:
     __version__ = "1.4.0"
 
 GITHUB_REPO = "uno-km/termux-vision"
-AMEVA_RUNTIME_RELEASE_LATEST = "https://github.com/uno-km/ameva-runtime/releases/latest/download"
 TERMUX_VISION_RELEASE_LATEST = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
 
 
@@ -43,7 +42,6 @@ def get_candidate_wheel_urls(version: Optional[str] = None) -> List[str]:
 
     urls.append(f"https://github.com/{GITHUB_REPO}/releases/download/v{ver}/{wheel_name}")
     urls.append(f"{TERMUX_VISION_RELEASE_LATEST}/{wheel_name}")
-    urls.append(f"{AMEVA_RUNTIME_RELEASE_LATEST}/{wheel_name}")
     return urls
 
 
