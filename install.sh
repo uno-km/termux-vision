@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# termux-vision: Universal Dynamic One-Line Bootstrap Installer (v1.3.1)
+# termux-vision: Universal Dynamic One-Line Bootstrap Installer (v1.4.0)
 # Open-Source under Apache License 2.0 (AMEVA Foundation)
 # Usage: curl -sL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh | bash
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${TERMUX_VISION_VERSION:-1.3.1}"
+VERSION="${TERMUX_VISION_VERSION:-1.4.0}"
 REPO="uno-km/termux-vision"
 ARCH="$(uname -m)"
 
@@ -94,7 +94,7 @@ for URL in "${CANDIDATE_URLS[@]}"; do
     if curl -sSL -f --connect-timeout 8 -o "${WHEEL_FILE}" "${URL}" 2>/dev/null; then
         if [ -s "${WHEEL_FILE}" ] && [ "$(wc -c < "${WHEEL_FILE}")" -gt 10000 ]; then
             echo "   -> Fetched verified release wheel from: ${URL}"
-            python -m pip install --no-deps "${WHEEL_FILE}" && python -m pip install termux-vision && WHEEL_INSTALLED=1
+            python -m pip install "${WHEEL_FILE}" && WHEEL_INSTALLED=1
             break
         fi
     fi
