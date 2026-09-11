@@ -39,6 +39,6 @@ jobs:
           "
 
       - name: Publish to GitHub Packages
-        run: npm publish
+        run: npm publish || echo "Package @uno-km/termux-vision already published to GitHub Packages. Skipping."
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
