@@ -14,7 +14,8 @@ class AmevaTermuxError(Exception):
         self.code = code or self.DEFAULT_CODE
         self.details = details
         self.raw_message = message
-        super().__init__(message)
+        formatted = f"{self.COMPONENT_TAG} [{self.code}] {message}" if self.COMPONENT_TAG not in message else message
+        super().__init__(formatted)
 
 
 TermuxVisionError = AmevaTermuxError
@@ -65,6 +66,8 @@ class InsufficientMemoryError(TermuxVisionError):
 
 
 class ModelNotFoundError(TermuxVisionError):
+    DEFAULT_CODE = "E001_MODEL_NOT_FOUND"
+
     def __init__(
         self,
         message: str = "",

@@ -4,11 +4,15 @@ AMEVA Unified Model Downloader for termux-vision.
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from .hardware import get_unified_model_search_dirs
-from .vlm.model_hub import VLMModelHub
+from .vlm.model_hub import MODEL_REGISTRY, download_vlm_model, get_cache_dir
 
 AVAILABLE_MODELS = {
-    "smolvlm-500m": {"name": "smolvlm-500m-q8_0.gguf", "size_mb": 510, "desc": "SmolVLM 500M Compact Vision Model"},
-    "moondream2": {"name": "moondream2-text-model-f16.gguf", "size_mb": 1800, "desc": "Moondream2 1.8B High Quality Vision Model"},
+    k: {
+        "name": v.get("text_file", f"{k}.gguf"),
+        "size_mb": v.get("size_mb", 500),
+        "desc": f"{k} Vision-Language Model"
+    }
+    for k, v in MODEL_REGISTRY.items()
 }
 
 def resolve_model_path(model_name: str = "smolvlm-500m") -> Path:
@@ -17,12 +21,14 @@ def resolve_model_path(model_name: str = "smolvlm-500m") -> Path:
         cand = d / model_name
         if cand.exists():
             return cand.resolve()
-    hub = VLMModelHub()
-    return Path(hub.resolve_model_path(model_name))
+    c_dir = Path(get_cache_dir()) / model_name
+    if c_dir.exists():
+        return c_dir.resolve()
+    return Path(get_cache_dir()) / model_name
 
 def download_model(model_name: str = "smolvlm-500m", output_dir: Optional[Path] = None, force: bool = False) -> Path:
-    hub = VLMModelHub(cache_dir=output_dir)
-    return Path(hub.download_model(model_name, force=force))
+    text_path, _ = download_vlm_model(model_name)
+    return Path(text_path)
 
 def list_models() -> List[Dict[str, Any]]:
     return [{"id": k, **v} for k, v in AVAILABLE_MODELS.items()]
