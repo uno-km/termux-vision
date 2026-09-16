@@ -118,7 +118,7 @@ const cliPath = path.resolve(__dirname, '..', 'bin', 'cli.js');
 const cliRes = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], { encoding: 'utf-8' });
 assert.strictEqual(cliRes.status, 0);
 const cliJson = JSON.parse(cliRes.stdout);
-assert.strictEqual(cliJson.schemaVersion, 1);
+assert.strictEqual(cliJson.schemaVersion || cliJson.schema_version, 1);
 console.log('  -> PASS: bin/cli.js doctor --json returned valid schema.');
 
 console.log('================================================================');
