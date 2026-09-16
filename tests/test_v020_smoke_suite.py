@@ -77,7 +77,7 @@ def test_runtime_output_decodes_text():
             assert res.output_tokens is None
 
 def test_vulkan_failure_retries_cpu_when_fallback_enabled():
-    """Validates automatic retry on CPU when Vulkan fails and fallback=True."""
+    """Validates that Vulkan failure strictly raises VulkanNotAvailableError without silent CPU fallback."""
     manifest = ModelManifest(
         schema_version=1,
         model_id="test-model",
@@ -97,7 +97,7 @@ def test_vulkan_failure_retries_cpu_when_fallback_enabled():
         with open(text_gguf, "wb") as f: f.write(b"GGUF")
         with open(vision_gguf, "wb") as f: f.write(b"GGUF")
 
-        rt = SubprocessVLMRuntime(manifest, model_dir=tmpdir, executable=sys.executable, backend="vulkan", fallback=True)
+        rt = SubprocessVLMRuntime(manifest, model_dir=tmpdir, executable=sys.executable, backend="vulkan", fallback=False)
 
         call_count = 0
         def fake_execute_once(image_path, prompt, max_tokens, temperature, target_backend):
@@ -115,11 +115,10 @@ def test_vulkan_failure_retries_cpu_when_fallback_enabled():
         dummy_img = os.path.join(tmpdir, "test.jpg")
         with open(dummy_img, "wb") as f: f.write(b"JPEG")
 
-        res = rt.execute(dummy_img, "test prompt")
-        assert call_count == 2
-        assert res.metrics.backend == "cpu"
-        assert len(res.warnings) > 0
-        assert "Vulkan execution failed; retried on CPU" in res.warnings[0]
+        with pytest.raises(errors.VulkanNotAvailableError) as exc_info:
+            rt.execute(dummy_img, "test prompt")
+        assert call_count == 1
+        assert "Execution halted strictly without silent CPU fallback" in str(exc_info.value)
 
 def test_no_fallback_propagates_error():
     """Validates error propagation when fallback=False."""

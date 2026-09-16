@@ -47,7 +47,7 @@ class SubprocessVLMRuntime:
         threads: int = 4,
         backend: str = "cpu",
         timeout_sec: int = 300,
-        fallback: bool = True,
+        fallback: bool = False,
         custom_text_model: Optional[str] = None,
         custom_vision_model: Optional[str] = None,
         context_limit: Optional[int] = None,
@@ -358,34 +358,10 @@ class SubprocessVLMRuntime:
                     self.backend
                 )
         except Exception as exc:
-            if self.backend == "vulkan":
-                if self.fallback:
-                    try:
-                        try:
-                            fallback_res = self._execute_once(
-                                image_path,
-                                prompt,
-                                max_tokens=max_tokens,
-                                temperature=temperature,
-                                target_backend="cpu",
-                                **kwargs
-                            )
-                        except TypeError:
-                            fallback_res = self._execute_once(
-                                image_path,
-                                prompt,
-                                max_tokens,
-                                temperature,
-                                "cpu"
-                            )
-                        return replace(
-                            fallback_res,
-                            warnings=fallback_res.warnings + (f"Vulkan execution failed; retried on CPU: {exc}",)
-                        )
-                    except Exception as cpu_exc:
-                        raise SubprocessRuntimeError(f"Both Vulkan and CPU fallback execution failed: {cpu_exc}") from exc
-                else:
-                    raise VulkanNotAvailableError(reason=str(exc)) from exc
+            if self.backend in ("vulkan", "gpu"):
+                raise VulkanNotAvailableError(
+                    reason=f"Vulkan execution failed: {exc}. Execution halted strictly without silent CPU fallback."
+                ) from exc
             raise
 
     def close(self):

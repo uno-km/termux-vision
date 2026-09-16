@@ -96,7 +96,7 @@ def test_req6_user_freedom_no_arbitrary_size_blocking():
         assert rt.manifest.estimated_memory_mb == 70000
 
 def test_req8_vulkan_auto_mode_retries_cpu_with_warning():
-    """Validates that auto mode (fallback=True) catches Vulkan failure and retries on CPU."""
+    """Validates that Vulkan failure strictly raises VulkanNotAvailableError without silent CPU fallback."""
     manifest = ModelManifest(
         schema_version=1,
         model_id="test-model",
@@ -114,7 +114,7 @@ def test_req8_vulkan_auto_mode_retries_cpu_with_warning():
         with open(os.path.join(tmpdir, "model.gguf"), "wb") as f: f.write(b"GGUF")
         with open(os.path.join(tmpdir, "mmproj.gguf"), "wb") as f: f.write(b"GGUF")
 
-        rt = SubprocessVLMRuntime(manifest, model_dir=tmpdir, executable=sys.executable, backend="vulkan", fallback=True)
+        rt = SubprocessVLMRuntime(manifest, model_dir=tmpdir, executable=sys.executable, backend="vulkan", fallback=False)
 
         call_backends = []
         def fake_exec(image_path, prompt, max_tokens, temperature, target_backend):
@@ -131,11 +131,10 @@ def test_req8_vulkan_auto_mode_retries_cpu_with_warning():
         dummy_img = os.path.join(tmpdir, "test.jpg")
         with open(dummy_img, "wb") as f: f.write(b"JPEG")
 
-        res = rt.execute(dummy_img, "hello")
-        assert call_backends == ["vulkan", "cpu"]
-        assert res.metrics.backend == "cpu"
-        assert len(res.warnings) == 1
-        assert "Vulkan execution failed; retried on CPU" in res.warnings[0]
+        with pytest.raises(errors.VulkanNotAvailableError) as exc_info:
+            rt.execute(dummy_img, "hello")
+        assert "Execution halted strictly without silent CPU fallback" in str(exc_info.value)
+        assert call_backends == ["vulkan"]
 
 def test_req9_strict_gpu_mode_rejects_and_instructs_cpu_switch():
     """Validates that explicit GPU mode (fallback=False) strictly raises VulkanNotAvailableError."""

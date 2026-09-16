@@ -219,14 +219,14 @@ def load(
                 import logging
                 logging.getLogger(__name__).warning("Invalid threads string %r, defaulting to 4: %s", threads, _val_err)
 
-        # 4. Strict Device & Fallback Policy
+        # 4. Strict Device & Fallback Policy (Zero-Silent-Fallback Enforced)
         requested_device = device.lower().strip()
         if requested_device in ("vulkan", "vulkan-force", "gpu"):
             actual_backend = "vulkan"
-            actual_fallback = False if fallback is None else fallback
+            actual_fallback = False
         elif requested_device == "auto":
             actual_backend = "auto"
-            actual_fallback = True if fallback is None else fallback
+            actual_fallback = False
         else:
             actual_backend = "cpu"
             actual_fallback = False
