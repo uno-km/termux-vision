@@ -102,7 +102,12 @@ def download_custom_url_or_hf(source: str, dest_dir: Optional[str] = None, progr
         reason="Unsupported URL or Hugging Face format. Expected https://... or hf:owner/repo:file.gguf"
     )
 
-def download_vlm_model(model_name: str = "smolvlm-500m", progress_callback=None) -> Tuple[str, str]:
+def download_vlm_model(
+    model_name: str = "smolvlm-500m",
+    progress_callback=None,
+    dest_dir: Optional[str] = None,
+    force: bool = False,
+) -> Tuple[str, str]:
     """
     Downloads or retrieves cached VLM model weights (text GGUF and vision projector GGUF).
     """
@@ -114,16 +119,16 @@ def download_vlm_model(model_name: str = "smolvlm-500m", progress_callback=None)
         )
 
     info = MODEL_REGISTRY[name_clean]
-    cache_dir = os.path.join(get_cache_dir(), name_clean)
-    os.makedirs(cache_dir, exist_ok=True)
+    target_dir = dest_dir if dest_dir else os.path.join(get_cache_dir(), name_clean)
+    os.makedirs(target_dir, exist_ok=True)
 
-    text_dest = os.path.join(cache_dir, info["text_file"])
-    vision_dest = os.path.join(cache_dir, info["vision_file"])
+    text_dest = os.path.join(target_dir, info["text_file"])
+    vision_dest = os.path.join(target_dir, info["vision_file"])
 
-    if not os.path.exists(text_dest) or os.path.getsize(text_dest) == 0:
+    if force or not os.path.exists(text_dest) or os.path.getsize(text_dest) == 0:
         download_file_stream(info["text_url"], text_dest, progress_callback=progress_callback)
 
-    if not os.path.exists(vision_dest) or os.path.getsize(vision_dest) == 0:
+    if force or not os.path.exists(vision_dest) or os.path.getsize(vision_dest) == 0:
         download_file_stream(info["vision_url"], vision_dest, progress_callback=progress_callback)
 
     return text_dest, vision_dest

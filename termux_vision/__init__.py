@@ -22,6 +22,9 @@ from .detect.types import BoundingBox, Detection
 from .detect.haar import detect_faces
 from .models.embedding import Embedding, compute_similarity
 from .vlm.api import load
+from .hardware import HardwareProfile, detect_hardware, resolve_device
+from .downloader import list_models, download_model, resolve_model_path
+from .exceptions import AmevaTermuxError, TermuxVisionError
 
 __all__ = [
     "io",
@@ -40,5 +43,14 @@ __all__ = [
     "Embedding",
     "compute_similarity",
     "load",
+    "HardwareProfile",
+    "detect_hardware",
+    "resolve_device",
+    "list_models",
+    "download_model",
+    "resolve_model_path",
+    "AmevaTermuxError",
+    "TermuxVisionError",
     "__version__"
 ]
+

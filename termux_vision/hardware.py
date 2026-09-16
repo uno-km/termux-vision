@@ -56,12 +56,9 @@ def is_termux() -> bool:
 
 
 def is_android() -> bool:
-    """Authoritative detection for Android Linux kernel."""
-    if is_termux():
-        return True
-    if Path("/system/build.prop").exists() or Path("/system/bin/sh").exists():
-        return True
-    return "android" in sys.platform.lower()
+    """Check whether running on Android (Termux execution implies Android runtime)."""
+    return is_termux()
+
 
 
 def _read_cpu_features() -> Tuple[List[str], int]:

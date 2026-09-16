@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from .hardware import get_unified_model_search_dirs
 from .vlm.model_hub import MODEL_REGISTRY, download_vlm_model, get_cache_dir
+from .vlm.manifest import verify_file_sha256
 
 AVAILABLE_MODELS = {
     k: {
@@ -27,7 +28,8 @@ def resolve_model_path(model_name: str = "smolvlm-500m") -> Path:
     return Path(get_cache_dir()) / model_name
 
 def download_model(model_name: str = "smolvlm-500m", output_dir: Optional[Path] = None, force: bool = False) -> Path:
-    text_path, _ = download_vlm_model(model_name)
+    dest_str = str(output_dir) if output_dir else None
+    text_path, _ = download_vlm_model(model_name, dest_dir=dest_str, force=force)
     return Path(text_path)
 
 def list_models() -> List[Dict[str, Any]]:
