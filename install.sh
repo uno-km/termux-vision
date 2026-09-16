@@ -19,8 +19,12 @@ echo "-> Detected Architecture: ${ARCH}"
 IS_TERMUX=false
 if [ -d "/data/data/com.termux" ] || [ -n "${TERMUX_VERSION:-}" ]; then
     IS_TERMUX=true
+    BIN_DIR="${PREFIX:-/data/data/com.termux/files/usr}/bin"
+    LIB_DIR="${PREFIX:-/data/data/com.termux/files/usr}/lib"
     echo "-> Detected Platform: Android Termux (Bionic libc)"
 else
+    BIN_DIR="/usr/local/bin"
+    LIB_DIR="/usr/local/lib"
     echo "-> Detected Platform: Generic Linux / Host POSIX"
 fi
 
@@ -65,57 +69,28 @@ fi
 
 # 4. Pre-provision Core Python Toolchain & Ecosystem Dependencies
 echo "-> [3/6] Pre-provisioning Python build toolchain and ecosystem accelerators..."
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install --upgrade ameva-runtime termux-llamacpp || true
+python -m pip install setuptools wheel
+python -m pip install ameva-runtime termux-llamacpp || true
 
-# 5. Dynamic Wheel Installation or Local Source Build
+# 5. Standard Python SDK Installation
 echo "-> [4/6] Installing termux-vision Python SDK (v${VERSION})..."
-WHEEL_INSTALLED=0
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/termux-vision-inst.XXXXXXXX")"
-trap 'rm -rf "${TMP_DIR}"' EXIT INT TERM HUP
-
-# Prioritized candidate endpoints for release wheels
-CANDIDATE_URLS=()
-if [ -n "${TERMUX_VISION_RELEASE_BASE:-}" ]; then
-    CANDIDATE_URLS+=("${TERMUX_VISION_RELEASE_BASE%/}/termux_vision-${VERSION}-py3-none-any.whl")
-fi
-if [ -n "${TERMUX_VISION_RELEASE_TAG:-}" ]; then
-    TAG="${TERMUX_VISION_RELEASE_TAG#v}"
-    CANDIDATE_URLS+=("https://github.com/${REPO}/releases/download/v${TAG}/termux_vision-${VERSION}-py3-none-any.whl")
-fi
-CANDIDATE_URLS+=(
-    "https://github.com/${REPO}/releases/download/v${VERSION}/termux_vision-${VERSION}-py3-none-any.whl"
-    "https://github.com/${REPO}/releases/latest/download/termux_vision-${VERSION}-py3-none-any.whl"
-    "https://github.com/uno-km/ameva-runtime/releases/latest/download/termux_vision-${VERSION}-py3-none-any.whl"
-)
-
-for URL in "${CANDIDATE_URLS[@]}"; do
-    WHEEL_FILE="${TMP_DIR}/termux_vision-${VERSION}-py3-none-any.whl"
-    if curl -sSL -f --connect-timeout 8 -o "${WHEEL_FILE}" "${URL}" 2>/dev/null; then
-        if [ -s "${WHEEL_FILE}" ] && [ "$(wc -c < "${WHEEL_FILE}")" -gt 10000 ]; then
-            echo "   -> Fetched verified release wheel from: ${URL}"
-            python -m pip install "${WHEEL_FILE}" && WHEEL_INSTALLED=1
-            break
-        fi
-    fi
-done
-
-if [ "${WHEEL_INSTALLED}" != "1" ]; then
-    if [ -f "pyproject.toml" ]; then
-        echo "   -> Installing from local source repository..."
-        python -m pip install --no-build-isolation -e .
-    else
-        echo "   -> Installing latest release from PyPI..."
-        python -m pip install termux-vision || true
-    fi
+if [ -f "pyproject.toml" ]; then
+    echo "   -> Installing from local source repository..."
+    python -m pip install --no-build-isolation -e .
+else
+    echo "   -> Installing latest release from PyPI..."
+    python -m pip install termux-vision || true
 fi
 
-# 6. Compile Native C/C++ Compute Engines (if source present)
+# 6. Compile Native C/C++ Compute Engines directly into $PREFIX/lib SSOT
 if [ -f "termux_vision/csrc/fast_cv.c" ] && command -v clang >/dev/null 2>&1; then
-    echo "-> [5/6] Compiling Native C & C++ Compute Acceleration Engines..."
-    clang -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv.so termux_vision/csrc/fast_cv.c -lm 2>/dev/null || true
+    echo "-> [5/6] Compiling Native C & C++ Compute Acceleration Engines into ${LIB_DIR}..."
+    mkdir -p "${LIB_DIR}"
+    clang -O3 -shared -fPIC -o "${LIB_DIR}/libfast_cv.so" termux_vision/csrc/fast_cv.c -lm 2>/dev/null || true
+    chmod 0755 "${LIB_DIR}/libfast_cv.so" 2>/dev/null || true
     if [ -f "termux_vision/csrc/fast_cv_engine.cpp" ]; then
-        clang++ -O3 -shared -fPIC -o termux_vision/csrc/libfast_cv_engine.so termux_vision/csrc/fast_cv_engine.cpp 2>/dev/null || true
+        clang++ -O3 -shared -fPIC -o "${LIB_DIR}/libfast_cv_engine.so" termux_vision/csrc/fast_cv_engine.cpp 2>/dev/null || true
+        chmod 0755 "${LIB_DIR}/libfast_cv_engine.so" 2>/dev/null || true
     fi
 fi
 

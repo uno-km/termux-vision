@@ -21,13 +21,14 @@ def _load_c_backend():
             return _lib
 
         dir_path = os.path.dirname(os.path.abspath(__file__))
+        prefix_lib = os.path.join(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"), "lib")
         candidates = [
+            os.path.join(prefix_lib, "libfast_cv.so"),
+            "/data/data/com.termux/files/usr/lib/libfast_cv.so",
             os.path.join(dir_path, "libfast_cv.so"),
             os.path.join(dir_path, "fast_cv.so"),
             os.path.join(dir_path, "fast_cv.dll"),
             os.path.join(dir_path, "..", "libfast_cv.so"),
-            os.path.expanduser("~/.local/lib/libfast_cv.so"),
-            "/data/data/com.termux/files/usr/lib/libfast_cv.so"
         ]
 
         for p in candidates:
@@ -193,7 +194,10 @@ def _load_cpp_backend():
             return _cpp_lib
 
         dir_path = os.path.dirname(os.path.abspath(__file__))
+        prefix_lib = os.path.join(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"), "lib")
         candidates = [
+            os.path.join(prefix_lib, "libfast_cv_engine.so"),
+            "/data/data/com.termux/files/usr/lib/libfast_cv_engine.so",
             os.path.join(dir_path, "libfast_cv_engine.so"),
             os.path.join(dir_path, "fast_cv_engine.so"),
             os.path.join(dir_path, "libfast_cv_engine.dll"),
@@ -201,8 +205,6 @@ def _load_cpp_backend():
             os.path.join(dir_path, "libfast_cv_engine.dylib"),
             os.path.join(dir_path, "..", "libfast_cv_engine.so"),
             os.path.join(dir_path, "..", "libfast_cv_engine.dll"),
-            os.path.expanduser("~/.local/lib/libfast_cv_engine.so"),
-            "/data/data/com.termux/files/usr/lib/libfast_cv_engine.so"
         ]
 
         for p in candidates:
