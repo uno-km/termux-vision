@@ -181,6 +181,7 @@ def main():
     p_vlm.add_argument("--system-prompt", default=None, help="System prompt context")
     p_vlm.add_argument("-q", "--quality", choices=["original", "high", "optimal", "fast"], default="optimal", help="Image quality scaling preset (original: raw 1:1, high: 1280px, optimal: 768px, fast: 384px)")
     p_vlm.add_argument("--max-dim", type=int, default=None, help="Explicit maximum image dimension in pixels (aspect ratio preserved)")
+    p_vlm.add_argument("-c", "--ctx-size", "--ctx", dest="ctx_size", type=int, default=None, help="Context size")
     p_vlm.add_argument("--ngl", type=int, default=None, help="Number of GPU offload layers")
     p_vlm.add_argument("--json", action="store_true", help="Output full result and metrics in JSON format")
 
@@ -326,6 +327,7 @@ def main():
                 runtime_path=args.runtime,
                 mmproj_path=args.mmproj,
                 allow_download=args.allow_download,
+                context_limit=args.ctx_size,
                 ngl=args.ngl
             ) as engine:
                 res = engine.describe(

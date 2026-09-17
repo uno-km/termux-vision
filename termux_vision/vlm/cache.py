@@ -54,7 +54,7 @@ CATALOG: Dict[str, ModelManifest] = {
         adapter="smolvlm",
         tier="M",
         estimated_memory_mb=750,
-        context_limit=1024,
+        context_limit=2048,
         preferred_resolution=384,
         artifacts=[
             ArtifactInfo(
