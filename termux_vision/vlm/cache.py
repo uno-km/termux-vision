@@ -59,17 +59,17 @@ CATALOG: Dict[str, ModelManifest] = {
         artifacts=[
             ArtifactInfo(
                 role="language_model",
-                filename="smolvlm-500m-instruct-q4_k_m.gguf",
-                size_bytes=350_000_000,
+                filename="SmolVLM-500M-Instruct-Q8_0.gguf",
+                size_bytes=436_806_912,
                 sha256="",
-                download_url="https://huggingface.co/HuggingFaceTB/SmolVLM-500M-Instruct-GGUF/resolve/main/smolvlm-500m-instruct-q4_k_m.gguf"
+                download_url="https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/SmolVLM-500M-Instruct-Q8_0.gguf"
             ),
             ArtifactInfo(
                 role="vision_projector",
-                filename="mmproj-smolvlm-500m-instruct-f16.gguf",
-                size_bytes=200_000_000,
+                filename="mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+                size_bytes=108_783_360,
                 sha256="",
-                download_url="https://huggingface.co/HuggingFaceTB/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-smolvlm-500m-instruct-f16.gguf"
+                download_url="https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
             )
         ]
     ),

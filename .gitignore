@@ -50,3 +50,4 @@ scratch/
 *.tgz.sha256
 *.whl
 *.whl.sha256
+releases/

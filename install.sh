@@ -44,7 +44,7 @@ fi
 if [ "${IS_TERMUX}" = "true" ] && command -v pkg >/dev/null 2>&1; then
     echo "-> [1/6] Updating Termux package repositories..."
     pkg update -y
-    echo "-> [2/6] Installing build toolchains, Vulkan drivers, and runtimes..."
+    echo "-> [2/6] Installing build toolchains and pure CPU runtime dependencies..."
     pkg install -y \
         python \
         nodejs \
@@ -54,10 +54,6 @@ if [ "${IS_TERMUX}" = "true" ] && command -v pkg >/dev/null 2>&1; then
         git \
         termux-api \
         wget \
-        vulkan-loader \
-        vulkan-headers \
-        vulkan-tools \
-        opencl-headers \
         python-numpy \
         libjpeg-turbo
 elif command -v apt-get >/dev/null 2>&1; then
@@ -70,7 +66,7 @@ fi
 # 4. Pre-provision Core Python Toolchain & Ecosystem Dependencies
 echo "-> [3/6] Pre-provisioning Python build toolchain and ecosystem accelerators..."
 python -m pip install setuptools wheel
-python -m pip install ameva-runtime termux-llamacpp || true
+python -m pip install termux-llamacpp || true
 
 # 5. Standard Python SDK Installation
 echo "-> [4/6] Installing termux-vision Python SDK (v${VERSION})..."
@@ -114,7 +110,7 @@ echo "================================================================="
 
 # 8. Run Hardware Diagnostics Probe
 if command -v termux-vision >/dev/null 2>&1; then
-    echo "-> Running Hardware Diagnostics Probe (Vulkan GPU & SoC)..."
+    echo "-> Running Hardware Diagnostics Probe (CPU & Environment)..."
     termux-vision doctor || true
 fi
 

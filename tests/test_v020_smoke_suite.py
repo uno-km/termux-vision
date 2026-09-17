@@ -171,13 +171,13 @@ def test_expected_size_mismatch_fails_integrity():
         m_dir = os.path.join(mgr.models_dir, "smolvlm-500m-q4")
         os.makedirs(m_dir, exist_ok=True)
         
-        # Write file with wrong size
-        art_file = os.path.join(m_dir, "smolvlm-500m-instruct-q4_k_m.gguf")
+        target_art = CATALOG["smolvlm-500m-q4"].artifacts[0].filename
+        art_file = os.path.join(m_dir, target_art)
         with open(art_file, "wb") as f: f.write(b"SHORT_DATA")
 
         rep = mgr.verify_integrity("smolvlm-500m-q4")
         assert rep["status"] == "CORRUPTED"
-        assert rep["artifacts"]["smolvlm-500m-instruct-q4_k_m.gguf"]["size_verified"] is False
+        assert rep["artifacts"][target_art]["size_verified"] is False
 
 def test_detection_type_allows_none_score():
     """Validates Detection dataclass allows score=None for heuristic detectors."""

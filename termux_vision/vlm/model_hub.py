@@ -15,11 +15,11 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "default_res": 384
     },
     "smolvlm-500m": {
-        "text_url": "https://huggingface.co/HuggingFaceTB/SmolVLM-500M-Instruct-GGUF/resolve/main/smolvlm-500m-instruct-q4_k_m.gguf",
-        "text_file": "smolvlm-500m-instruct-q4_k_m.gguf",
-        "vision_url": "https://huggingface.co/HuggingFaceTB/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-smolvlm-500m-instruct-f16.gguf",
-        "vision_file": "mmproj-smolvlm-500m-instruct-f16.gguf",
-        "size_mb": 550,
+        "text_url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/SmolVLM-500M-Instruct-Q8_0.gguf",
+        "text_file": "SmolVLM-500M-Instruct-Q8_0.gguf",
+        "vision_url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+        "vision_file": "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf",
+        "size_mb": 545,
         "default_res": 384
     }
 }
