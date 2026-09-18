@@ -9,10 +9,20 @@ import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
-try:
-    from . import __version__
-except Exception:
-    __version__ = "1.4.0"
+def _resolve_package_version() -> Optional[str]:
+    """Dynamically resolve current installed package version without static fallback."""
+    try:
+        from . import __version__
+        if __version__:
+            return __version__
+    except Exception:
+        pass
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("termux-vision")
+    except Exception:
+        return None
+
 
 GITHUB_REPO = "uno-km/termux-vision"
 TERMUX_VISION_RELEASE_LATEST = f"https://github.com/{GITHUB_REPO}/releases/latest/download"
@@ -25,23 +35,34 @@ def get_prebuilt_base_url() -> str:
     if custom_tag := os.environ.get("TERMUX_VISION_RELEASE_TAG") or os.environ.get("AMEVA_RELEASE_TAG"):
         tag = custom_tag if custom_tag.startswith("v") else f"v{custom_tag}"
         return f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
-    return f"https://github.com/{GITHUB_REPO}/releases/download/v{__version__}"
+    ver = _resolve_package_version()
+    if ver:
+        return f"https://github.com/{GITHUB_REPO}/releases/download/v{ver}"
+    return TERMUX_VISION_RELEASE_LATEST
 
 
 def get_candidate_wheel_urls(version: Optional[str] = None) -> List[str]:
     """Resolve prioritized candidate URLs for downloading release wheel packages."""
-    ver = version or __version__
-    wheel_name = f"termux_vision-{ver}-py3-none-any.whl"
+    ver = version or _resolve_package_version()
+    wheel_name = f"termux_vision-{ver}-py3-none-any.whl" if ver else "termux_vision-py3-none-any.whl"
     urls: List[str] = []
 
+    # Tier 1: Explicit environment overrides
     if custom_base := os.environ.get("TERMUX_VISION_RELEASE_BASE") or os.environ.get("AMEVA_RELEASE_BASE"):
         urls.append(f"{custom_base.rstrip('/')}/{wheel_name}")
     if custom_tag := os.environ.get("TERMUX_VISION_RELEASE_TAG") or os.environ.get("AMEVA_RELEASE_TAG"):
         tag = custom_tag if custom_tag.startswith("v") else f"v{custom_tag}"
         urls.append(f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/{wheel_name}")
 
-    urls.append(f"https://github.com/{GITHUB_REPO}/releases/download/v{ver}/{wheel_name}")
+    # Tier 2: GitHub Releases latest canonical endpoint (Zero-Hardcoding SSOT)
     urls.append(f"{TERMUX_VISION_RELEASE_LATEST}/{wheel_name}")
+    urls.append(f"{TERMUX_VISION_RELEASE_LATEST}/termux-vision-vulkan-android-arm64.tar.gz")
+
+    # Tier 3: Installed package dynamic version matching
+    if ver:
+        urls.append(f"https://github.com/{GITHUB_REPO}/releases/download/v{ver}/{wheel_name}")
+        urls.append(f"https://github.com/{GITHUB_REPO}/releases/download/v{ver}/termux-vision-vulkan-android-arm64.tar.gz")
+
     return urls
 
 
@@ -50,11 +71,12 @@ def download_with_progress(url: str, dest_path: Path, label: str) -> bool:
     dest_path = Path(dest_path)
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = dest_path.with_name(f".{dest_path.name}.tmp")
+    ver = _resolve_package_version() or "latest"
 
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": f"termux-vision-installer/{__version__} (Android; ARM64)"}
+            headers={"User-Agent": f"termux-vision-installer/{ver} (Android; ARM64)"}
         )
         with urllib.request.urlopen(req, timeout=30) as resp, open(temp_path, "wb") as out_f:
             total = int(resp.headers.get("Content-Length", 0))

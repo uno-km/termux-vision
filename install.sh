@@ -4,9 +4,15 @@
 # Open-Source under Apache License 2.0 (AMEVA Foundation)
 # Usage: curl -sL https://raw.githubusercontent.com/uno-km/termux-vision/main/install.sh | bash
 # ==============================================================================
-set -euo pipefail
-
-VERSION="${TERMUX_VISION_VERSION:-1.4.0}"
+# Dynamic version resolution: Environment -> GitHub API (latest) -> Dynamic fallback
+if [ -n "${TERMUX_VISION_VERSION:-}" ]; then
+    VERSION="${TERMUX_VISION_VERSION}"
+else
+    VERSION=$(curl -sL https://api.github.com/repos/uno-km/termux-vision/releases/latest 2>/dev/null | grep '"tag_name":' | head -n 1 | sed -E 's/.*"v?([^"]+)".*/\1/' || true)
+    if [ -z "${VERSION}" ]; then
+        VERSION="latest"
+    fi
+fi
 REPO="uno-km/termux-vision"
 ARCH="$(uname -m)"
 
@@ -75,7 +81,7 @@ if [ -f "pyproject.toml" ]; then
     python -m pip install --no-build-isolation -e .
 else
     echo "   -> Installing latest release from PyPI..."
-    python -m pip install termux-vision || true
+    python -m pip install --upgrade termux-vision || true
 fi
 
 # 6. Compile Native C/C++ Compute Engines directly into $PREFIX/lib SSOT
