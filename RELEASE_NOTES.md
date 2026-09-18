@@ -1,6 +1,6 @@
-# Release Notes - termux-vision v1.4.4
+# Release Notes - termux-vision v1.4.5
 
-**Release Tag**: `v1.4.4`  
+**Release Tag**: `v1.4.5`  
 **Distribution Channels**: PyPI (`termux-vision`), NPM (`termux-vision`), GitHub Releases  
 **Target Platform**: Android Termux (ARM64 / aarch64 Bionic)  
 **License**: Apache-2.0  
@@ -9,7 +9,11 @@
 
 ## Highlights & Key Architectural Changes
 
-### 1. Enforced Single-Turn Non-Interactive Execution
+### 1. Multimodal Chat Template Collision Resolution
+- **Resolved Prompt Tokenization Crash**: Stripped conflicting `--chat-template` arguments during multimodal inference, preventing `Failed to tokenize prompt` and marker-count mismatches with GGUF vision models (e.g. SmolVLM).
+- **Vulkan Device Flag Sanitization**: Purged invalid `--device vulkan` argument from standalone execution paths, ensuring clean device selection and compatibility with modern llama.cpp runtime builds.
+
+### 2. Enforced Single-Turn Non-Interactive Execution
 - **Resolved REPL Deadlock**: Explicitly enforced `--single-turn` and `--no-conversation` CLI arguments across internal `llama-cli` execution pipelines to eliminate hung interactive chat loops.
 - **Model-Native Chat Templates**: Directly passed clean user queries to let `llama-cli` parse Jinja chat templates natively, eradicating redundant token tag duplication and tokenizer parsing failures.
 - **Eradicated Ambiguous Model Overloading**: Separated catalog preset names from custom GGUF file paths across CLI, Python SDK, and Node.js SDK.

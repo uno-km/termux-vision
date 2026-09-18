@@ -5,6 +5,12 @@ All notable changes to `termux-vision` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2026-09-18
+
+### Fixed
+- **Multimodal Chat Template Collision Resolution**: Stripped conflicting `--chat-template` arguments during multimodal inference, preventing `Failed to tokenize prompt` and marker-count mismatches with GGUF vision models.
+- **Vulkan Device Flag Sanitization**: Purged invalid `--device vulkan` argument from standalone execution paths, ensuring clean device selection and compatibility with modern llama.cpp runtime builds.
+
 ## [1.4.4] - 2026-09-18
 
 ### Fixed

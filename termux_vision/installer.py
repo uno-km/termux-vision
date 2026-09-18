@@ -109,3 +109,75 @@ def download_with_progress(url: str, dest_path: Path, label: str) -> bool:
         return False
 
     return False
+
+
+def ensure_llamacpp_runtime(auto_yes: bool = False, interactive: bool = True) -> bool:
+    """
+    Verify termux-llamacpp installation, prompt user for approval or update if version differs,
+    and enforce installing the latest version. Supports non-interactive flags (-y, --all).
+    """
+    import subprocess
+    import json
+
+    current_ver = None
+    try:
+        import importlib.metadata
+        current_ver = importlib.metadata.version("termux-llamacpp")
+    except Exception:
+        pass
+
+    latest_ver = None
+    try:
+        req = urllib.request.Request(
+            "https://pypi.org/pypi/termux-llamacpp/json",
+            headers={"User-Agent": "termux-vision-installer"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            latest_ver = data.get("info", {}).get("version")
+    except Exception:
+        pass
+
+    target_ver_str = f"v{latest_ver}" if latest_ver else "최신 버전"
+
+    if not current_ver:
+        sys.stderr.write("  [Notice] 'termux-llamacpp'가 현재 설치되어 있지 않습니다.\n")
+        if auto_yes:
+            sys.stderr.write(f"  -> 자동 승인(-y/--all) 감지: {target_ver_str}을 설치합니다...\n")
+            cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "termux-llamacpp"]
+            return subprocess.call(cmd) == 0
+        elif interactive and sys.stdin.isatty():
+            try:
+                ans = input("지금 termux-llamacpp 설치가 필요합니다. 설치하시겠습니까? [y/N]: ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                ans = "n"
+            if ans in ("y", "yes"):
+                sys.stderr.write(f"  -> {target_ver_str} 설치 중...\n")
+                cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "termux-llamacpp"]
+                return subprocess.call(cmd) == 0
+            else:
+                sys.stderr.write("  [경고] 사용자가 설치를 건너뛰었습니다. VLM 멀티모달 기능을 사용할 수 없습니다.\n")
+                return False
+        else:
+            return False
+
+    # Already installed, check version discrepancy
+    if latest_ver and current_ver != latest_ver:
+        if auto_yes:
+            sys.stderr.write(f"  -> 자동 승인(-y/--all) 감지: termux-llamacpp (v{current_ver}) -> v{latest_ver} 업데이트 중...\n")
+            cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "termux-llamacpp"]
+            return subprocess.call(cmd) == 0
+        elif interactive and sys.stdin.isatty():
+            try:
+                ans = input(f"현재 termux-llamacpp 버전(v{current_ver})이 최신 버전(v{latest_ver})과 다릅니다. 업데이트하시겠습니까? [y/N]: ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                ans = "n"
+            if ans in ("y", "yes"):
+                sys.stderr.write(f"  -> termux-llamacpp 최신 버전(v{latest_ver})으로 업데이트 중...\n")
+                cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "termux-llamacpp"]
+                return subprocess.call(cmd) == 0
+            else:
+                sys.stderr.write(f"  -> 현재 설치된 v{current_ver} 버전을 유지합니다.\n")
+                return True
+
+    return True

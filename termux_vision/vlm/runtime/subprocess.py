@@ -112,243 +112,72 @@ class SubprocessVLMRuntime:
         target_backend: str = "cpu",
         **kwargs
     ) -> VLMResult:
-        system_prompt = kwargs.get("system_prompt")
-        top_p = kwargs.get("top_p")
-        top_k = kwargs.get("top_k")
-        repeat_penalty = kwargs.get("repeat_penalty", 1.2)
-        presence_penalty = kwargs.get("presence_penalty")
-        frequency_penalty = kwargs.get("frequency_penalty")
-        seed = kwargs.get("seed")
-        stop_tokens = kwargs.get("stop_tokens")
-
-        # Pass raw user query directly to let llama-cli apply model-native Jinja chat template cleanly
-        formatted_prompt = prompt.strip() if isinstance(prompt, str) else str(prompt)
-
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as pf:
-            prompt_file = pf.name
-            pf.write(formatted_prompt)
-
-        # Delegate CLI construction to ameva-runtime.vulkan VisionAdapter
-        try:
-            from ameva_runtime.vulkan.adapters.vision import VisionAdapter
-            cli_cmd = VisionAdapter.build_cli_args(
-                executable=self.executable,
-                text_model_path=self.text_model_path,
-                vision_model_path=self.vision_model_path,
-                image_path=image_path,
-                prompt_file=prompt_file,
-                target_backend=target_backend,
-                threads=self.threads,
-                context_limit=self.context_limit,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                repeat_penalty=repeat_penalty,
-                top_p=top_p,
-                top_k=top_k,
-                presence_penalty=presence_penalty,
-                frequency_penalty=frequency_penalty,
-                seed=seed,
-                ngl_override=self.custom_ngl,
-            )
-        except ImportError:
-            # Standalone fallback if ameva-runtime is not installed
-            ngl_val = str(self.custom_ngl) if self.custom_ngl is not None else ("99" if target_backend in ("vulkan", "gpu") else "0")
-            cli_cmd = [
-                str(self.executable),
-                "-m", str(self.text_model_path),
-                "--mmproj", str(self.vision_model_path),
-                "--image", str(image_path),
-                "-f", str(prompt_file),
-                "-t", str(self.threads),
-                "-c", str(self.context_limit),
-                "-n", str(max_tokens),
-                "--temp", str(temperature),
-                "-ngl", ngl_val,
-            ]
-            if target_backend in ("vulkan", "gpu"):
-                cli_cmd.extend(["--device", "vulkan"])
-
-        if stop_tokens:
-            for st in stop_tokens:
-                cli_cmd.extend(["-r", str(st)])
-
-        # Strip --chat-template if present to allow model's native GGUF multimodal handler to format image markers cleanly
-        clean_cmd = []
-        skip_next = False
-        for arg in cli_cmd:
-            if skip_next:
-                skip_next = False
-                continue
-            if arg == "--chat-template":
-                skip_next = True
-                continue
-            clean_cmd.append(arg)
-        cli_cmd = clean_cmd
-
-        # Explicitly enforce single-turn execution and disable conversation REPL
-        if "--single-turn" not in cli_cmd and "-st" not in cli_cmd:
-            cli_cmd.append("--single-turn")
-        if "--no-conversation" not in cli_cmd and "-no-cnv" not in cli_cmd:
-            cli_cmd.append("--no-conversation")
-
-        # Resolve execution environment safely via termux-llamacpp SDK
-        execution_env = os.environ.copy()
+        """
+        Execute VLM inference via official termux-llamacpp SDK with strict 1:1 device routing.
+        """
         try:
             from termux_llamacpp import LlamaRuntime
-            rt = LlamaRuntime()
-            if hasattr(rt, "prepare_env"):
-                execution_env = rt.prepare_env(device=target_backend)
-        except Exception:
-            pass
+        except ImportError as imp_err:
+            raise RuntimeNotFoundError(
+                "Official termux-llamacpp SDK is required for VLM multimodal inference.\n"
+                "Please install it via:\n"
+                "  pip install termux-llamacpp\n"
+                "Or run:\n"
+                "  termux-vision install\n"
+            ) from imp_err
 
-        popen_kwargs = {
-            "stdin": subprocess.DEVNULL,
-            "stdout": subprocess.PIPE,
-            "stderr": subprocess.PIPE,
-            "text": True,
-            "encoding": "utf-8",
-            "errors": "replace",
-            "env": execution_env,
-        }
-        if os.name == "posix":
-            popen_kwargs["start_new_session"] = True
-
+        runtime = LlamaRuntime()
         try:
-            t0 = time.perf_counter()
-            process = subprocess.Popen(cli_cmd, **popen_kwargs)
-
-            try:
-                out, err = process.communicate(timeout=self.timeout_sec)
-            except subprocess.TimeoutExpired:
-                if os.name == "posix":
-                    try:
-                        os.killpg(process.pid, signal.SIGTERM)
-                        process.wait(timeout=2)
-                    except (subprocess.TimeoutExpired, ProcessLookupError):
-                        try:
-                            os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError as _proc_err:
-                            _ = _proc_err
-                else:
-                    process.kill()
-                raise SubprocessRuntimeError(f"VLM inference timed out after {self.timeout_sec}s")
-
-            if process.returncode != 0:
-                err_detail = err.strip() or out.strip()
-                if process.returncode in (-9, 137, 247):
-                    raise SubprocessRuntimeError(
-                        f"VLM inference process was terminated by system (OOM / LowMemoryKiller / SIGKILL, exit code {process.returncode}).\n"
-                        f"[Action Recommendation] Use a smaller model (e.g. smolvlm-500m-q4), reduce thread count (-t 2), lower max tokens, or close background apps."
-                    )
+            response = runtime.generate_vlm(
+                model=self.text_model_path,
+                mmproj=self.vision_model_path,
+                image=image_path,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                threads=self.threads,
+                ctx_size=self.context_limit,
+                device=target_backend,
+                n_gpu_layers=self.custom_ngl,
+                repeat_penalty=kwargs.get("repeat_penalty", 1.2),
+                top_p=kwargs.get("top_p"),
+                top_k=kwargs.get("top_k"),
+            )
+        except Exception as exec_err:
+            err_str = str(exec_err)
+            if "OOM" in err_str or "exit 137" in err_str:
                 raise SubprocessRuntimeError(
-                    f"llama-cli exited with returncode {process.returncode}: {err_detail}"
-                )
+                    f"VLM inference process was terminated by system (OOM / LowMemoryKiller).\n"
+                    f"[Action Recommendation] Use a smaller model (e.g. smolvlm-500m-q4), reduce thread count (-t 2), lower max tokens, or close background apps."
+                ) from exec_err
+            raise SubprocessRuntimeError(f"VLM inference failed via termux-llamacpp runtime: {exec_err}") from exec_err
 
-            total_ms = (time.perf_counter() - t0) * 1000.0
+        text_output = response.text
+        word_count = len(text_output.split())
 
-            # Parse llama-cli hardware & timing diagnostics from full logs
-            load_ms = None
-            prompt_eval_ms = None
-            eval_ms = None
-            actual_tps = None
-            vulkan_dev = None
-            offload_info = None
+        metrics = InferenceMetrics(
+            backend=response.backend,
+            model_id=self.manifest.model_id,
+            load_ms=None,
+            vision_ms=0.0,
+            decode_ms=response.latency_ms or 0.0,
+            tokens_per_second=response.generation_tps,
+            peak_rss_mb=None
+        )
 
-            full_log = out + "\n" + err
-            for l in full_log.splitlines():
-                if "ggml_vulkan: Using device:" in l or "ggml_vulkan: Found" in l:
-                    vulkan_dev = l.strip()
-                elif "offloaded" in l and "layers to GPU" in l:
-                    offload_info = l.strip()
-                elif "load time =" in l:
-                    try:
-                        load_ms = float(l.split("load time =")[1].split("ms")[0].strip())
-                    except (ValueError, IndexError):
-                        logger.debug("Failed to parse load time metric from line: %s", l)
-                elif "prompt eval time =" in l:
-                    try:
-                        prompt_eval_ms = float(l.split("prompt eval time =")[1].split("ms")[0].strip())
-                    except (ValueError, IndexError):
-                        logger.debug("Failed to parse prompt eval time metric from line: %s", l)
-                elif "eval time =" in l and "prompt eval" not in l:
-                    try:
-                        parts = l.split("eval time =")[1].split("ms")[0].strip()
-                        eval_ms = float(parts)
-                    except (ValueError, IndexError):
-                        logger.debug("Failed to parse eval time metric from line: %s", l)
-                elif "Generation:" in l and "t/s" in l:
-                    try:
-                        parts = l.split("Generation:")
-                        actual_tps = float(parts[1].replace("t/s", "").replace("]", "").strip())
-                    except (ValueError, IndexError):
-                        logger.debug("Failed to parse generation tps metric from line: %s", l)
+        hw_diag = []
+        if response.prompt_tps:
+            hw_diag.append(f"[Prompt Speed] {response.prompt_tps} t/s")
 
-            # Extract generated response text cleanly
-            raw_text = out
-            text_output = ""
-            for sep in ["<|im_start|>assistant", "<im_start>assistant", "Assistant:", "<start_of_turn>model", "[ASSISTANT]"]:
-                if sep in raw_text:
-                    text_output = raw_text.split(sep)[-1].strip()
-                    break
-
-            if not text_output:
-                lines = out.splitlines()
-                content_lines = []
-                start_capture = False
-                for line in lines:
-                    trimmed = line.strip()
-                    if trimmed.startswith(">"):
-                        start_capture = True
-                        continue
-                    if start_capture:
-                        if "[" in trimmed and "t/s" in trimmed:
-                            continue
-                        if trimmed.startswith("Exiting") or trimmed.startswith("main: image"):
-                            continue
-                        if trimmed:
-                            content_lines.append(trimmed)
-                text_output = "\n".join(content_lines) if content_lines else out.strip()
-
-            # Clean trailing and token tags without destroying punctuation
-            for tag in ["<|im_end|>", "<im_end>", "<|endoftext|>", "<|vision_start|>", "<|vision_end|>", "<|image_pad|>", "<end_of_turn>", "</s>"]:
-                text_output = text_output.replace(tag, "").strip()
-
-            word_count = len(text_output.split())
-
-            # Determine truthful active backend based on real log telemetry from llama/ameva
-            if target_backend in ("vulkan", "auto", "gpu"):
-                actual_backend = "vulkan" if (vulkan_dev is not None or offload_info is not None) else "cpu (vulkan offload skipped)"
-            else:
-                actual_backend = "cpu"
-
-            metrics = InferenceMetrics(
-                backend=actual_backend,
-                model_id=self.manifest.model_id,
-                load_ms=round(load_ms, 2) if load_ms is not None else None,
-                vision_ms=round(prompt_eval_ms, 2) if prompt_eval_ms is not None else 0.0,
-                decode_ms=round(eval_ms if eval_ms is not None else total_ms, 2),
-                tokens_per_second=actual_tps,
-                peak_rss_mb=None
-            )
-
-            hw_diag = []
-            if vulkan_dev:
-                hw_diag.append(f"[GPU Hardware] {vulkan_dev}")
-            if offload_info:
-                hw_diag.append(f"[Layer Offload] {offload_info}")
-
-            return VLMResult(
-                text=text_output,
-                finish_reason="stop",
-                input_tokens=None,
-                output_tokens=None,
-                word_count=word_count,
-                metrics=metrics,
-                warnings=tuple(hw_diag)
-            )
-        finally:
-            if os.path.exists(prompt_file):
-                os.remove(prompt_file)
+        return VLMResult(
+            text=text_output,
+            finish_reason=response.finish_reason,
+            input_tokens=None,
+            output_tokens=None,
+            word_count=word_count,
+            metrics=metrics,
+            warnings=tuple(hw_diag)
+        )
 
     def execute(
         self,

@@ -16,6 +16,16 @@ fi
 REPO="uno-km/termux-vision"
 ARCH="$(uname -m)"
 
+# Parse CLI arguments for auto-yes / non-interactive flags
+AUTO_YES=false
+for arg in "$@"; do
+    case "$arg" in
+        -y|-Y|-yes|-YES|--yes|--all|-a)
+            AUTO_YES=true
+            ;;
+    esac
+done
+
 echo "================================================================="
 echo " [AMEVA Foundation] termux-vision Universal Installer v${VERSION}"
 echo "================================================================="
@@ -70,9 +80,56 @@ elif command -v apt-get >/dev/null 2>&1; then
 fi
 
 # 4. Pre-provision Core Python Toolchain & Ecosystem Dependencies
-echo "-> [3/6] Pre-provisioning Python build toolchain and ecosystem accelerators..."
-python -m pip install setuptools wheel
-python -m pip install termux-llamacpp || true
+echo "-> [3/6] Checking required VLM runtime dependency: termux-llamacpp..."
+python -m pip install setuptools wheel >/dev/null 2>&1 || true
+
+INSTALL_LLAMACPP=false
+CURRENT_LLAMA_VER=$(python3 -c "import importlib.metadata; print(importlib.metadata.version('termux-llamacpp'))" 2>/dev/null || true)
+LATEST_LLAMA_VER=$(curl -sL https://pypi.org/pypi/termux-llamacpp/json 2>/dev/null | grep '"version":' | head -n 1 | sed -E 's/.*"version":\s*"([^"]+)".*/\1/' || true)
+if [ -z "${LATEST_LLAMA_VER}" ]; then
+    LATEST_LLAMA_VER="latest"
+fi
+
+if [ -z "${CURRENT_LLAMA_VER}" ]; then
+    echo "  [Notice] 'termux-llamacpp' is currently NOT installed."
+    if [ "${AUTO_YES}" = "true" ]; then
+        echo "  -> Auto-approval enabled (-y/--all). Installing latest termux-llamacpp (v${LATEST_LLAMA_VER})..."
+        INSTALL_LLAMACPP=true
+    else
+        read -r -p "지금 termux-llamacpp 설치가 필요합니다. 설치하시겠습니까? [y/N]: " USER_CHOICE
+        case "${USER_CHOICE}" in
+            [yY]|[yY][eE][sS])
+                INSTALL_LLAMACPP=true
+                ;;
+            *)
+                echo "  [Warning] termux-llamacpp installation skipped by user. VLM multimodal features will be unavailable."
+                ;;
+        esac
+    fi
+else
+    echo "  -> Found installed termux-llamacpp (v${CURRENT_LLAMA_VER}). Latest available: v${LATEST_LLAMA_VER}"
+    if [ "${LATEST_LLAMA_VER}" != "latest" ] && [ "${CURRENT_LLAMA_VER}" != "${LATEST_LLAMA_VER}" ]; then
+        if [ "${AUTO_YES}" = "true" ]; then
+            echo "  -> Auto-approval enabled (-y/--all). Updating termux-llamacpp to v${LATEST_LLAMA_VER}..."
+            INSTALL_LLAMACPP=true
+        else
+            read -r -p "현재 termux-llamacpp 버전(v${CURRENT_LLAMA_VER})이 최신 버전(v${LATEST_LLAMA_VER})과 다릅니다. 업데이트하시겠습니까? [y/N]: " USER_CHOICE
+            case "${USER_CHOICE}" in
+                [yY]|[yY][eE][sS])
+                    INSTALL_LLAMACPP=true
+                    ;;
+                *)
+                    echo "  -> Keeping existing version v${CURRENT_LLAMA_VER}."
+                    ;;
+            esac
+        fi
+    fi
+fi
+
+if [ "${INSTALL_LLAMACPP}" = "true" ]; then
+    echo "  -> Installing / Updating termux-llamacpp to latest version..."
+    python3 -m pip install --upgrade termux-llamacpp
+fi
 
 # 5. Standard Python SDK Installation
 echo "-> [4/6] Installing termux-vision Python SDK (v${VERSION})..."

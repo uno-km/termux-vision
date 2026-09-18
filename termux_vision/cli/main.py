@@ -195,6 +195,10 @@ def main():
     p_bench.add_argument("--runs", type=int, default=3, help="Benchmark run count")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark results in JSON format")
 
+    # Command: install
+    p_inst = subparsers.add_parser("install", help="Verify and install required VLM runtime dependencies (termux-llamacpp)")
+    p_inst.add_argument("-y", "-Y", "--yes", "-yes", "--all", "-a", dest="auto_yes", action="store_true", help="Automatically approve installation and updates without interactive prompts")
+
     # ── AMEVA Component Protocol v1 ─────────────────────────────────────────
     try:
         from ameva_component.cli_support import build_protocol_subcommands
@@ -207,6 +211,11 @@ def main():
     # ────────────────────────────────────────────────────────────────────────
 
     args = parser.parse_args()
+
+    if args.command == "install":
+        from ..installer import ensure_llamacpp_runtime
+        ok = ensure_llamacpp_runtime(auto_yes=getattr(args, "auto_yes", False), interactive=True)
+        sys.exit(0 if ok else 1)
 
     if args.command == "doctor":
         rep = run_doctor(probe_vulkan=getattr(args, "probe_vulkan", False), full_check=getattr(args, "full", False))
