@@ -1,6 +1,6 @@
-# Release Notes - termux-vision v1.4.3
+# Release Notes - termux-vision v1.4.4
 
-**Release Tag**: `v1.4.3`  
+**Release Tag**: `v1.4.4`  
 **Distribution Channels**: PyPI (`termux-vision`), NPM (`termux-vision`), GitHub Releases  
 **Target Platform**: Android Termux (ARM64 / aarch64 Bionic)  
 **License**: Apache-2.0  
@@ -9,7 +9,9 @@
 
 ## Highlights & Key Architectural Changes
 
-### 1. Clean Parameter Separation: Model ID vs Model Path
+### 1. Enforced Single-Turn Non-Interactive Execution
+- **Resolved REPL Deadlock**: Explicitly enforced `--single-turn` and `--no-conversation` CLI arguments across internal `llama-cli` execution pipelines to eliminate hung interactive chat loops.
+- **Model-Native Chat Templates**: Directly passed clean user queries to let `llama-cli` parse Jinja chat templates natively, eradicating redundant token tag duplication and tokenizer parsing failures.
 - **Eradicated Ambiguous Model Overloading**: Separated catalog preset names from custom GGUF file paths across CLI, Python SDK, and Node.js SDK.
 - **Dedicated CLI Flags**:
   - `-m, --model`: Exclusively for official catalog identifiers (`smolvlm-500m-q4`, `qwen2-vl-2b-q4`).

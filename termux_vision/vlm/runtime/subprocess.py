@@ -121,13 +121,8 @@ class SubprocessVLMRuntime:
         seed = kwargs.get("seed")
         stop_tokens = kwargs.get("stop_tokens")
 
-        if hasattr(self.adapter, "format_prompt"):
-            try:
-                formatted_prompt = self.adapter.format_prompt(prompt, system_prompt=system_prompt)
-            except TypeError:
-                formatted_prompt = self.adapter.format_prompt(prompt)
-        else:
-            formatted_prompt = f"<image>\nUser: {prompt}\nAssistant:"
+        # Pass raw user query directly to let llama-cli apply model-native Jinja chat template cleanly
+        formatted_prompt = prompt.strip() if isinstance(prompt, str) else str(prompt)
 
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as pf:
             prompt_file = pf.name
@@ -177,8 +172,11 @@ class SubprocessVLMRuntime:
             for st in stop_tokens:
                 cli_cmd.extend(["-r", str(st)])
 
-        # Strip any obsolete single-turn flags to ensure compatibility with modern llama-cli
-        cli_cmd = [arg for arg in cli_cmd if arg not in ("--single-turn", "-st")]
+        # Explicitly enforce single-turn execution and disable conversation REPL
+        if "--single-turn" not in cli_cmd and "-st" not in cli_cmd:
+            cli_cmd.append("--single-turn")
+        if "--no-conversation" not in cli_cmd and "-no-cnv" not in cli_cmd:
+            cli_cmd.append("--no-conversation")
 
         # Resolve execution environment safely via termux-llamacpp SDK
         execution_env = os.environ.copy()
