@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.3] - 2026-09-18
+
+### Added
+- Dedicated `--model-path` CLI option and SDK parameter (`model_path` in Python, `modelPath` in Node.js) for explicit custom GGUF models.
+- Strict mutually exclusive parameter validation between model ID and model path.
+
+### Changed & Fixed
+- Eradicated all legacy 1024 context limits; established universal 2048 token baseline across custom discovery and catalog models.
+- Integrated `termux-llamacpp` official runtime execution environment (`prepare_env`) into `ZeroFlickerEngine` and `SubprocessVLMRuntime`.
+- Updated `RuntimeNotFoundError` to explicitly guide installation via `pip install termux-llamacpp` and `npm install -g termux-llamacpp`.
+- Synchronized package manifests across PyPI and npm to `1.4.3`.
+
 ## [1.4.2] - 2026-09-18
 
 ### Changed & Hardened

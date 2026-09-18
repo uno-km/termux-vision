@@ -63,7 +63,7 @@ class ModelManifest:
             adapter=data["adapter"],
             tier=data.get("tier", "M"),
             estimated_memory_mb=data.get("estimated_memory_mb", 1000),
-            context_limit=data.get("context_limit", 1024),
+            context_limit=data.get("context_limit", 2048),
             preferred_resolution=data.get("preferred_resolution", 384),
             artifacts=artifacts
         )

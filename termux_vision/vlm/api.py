@@ -139,7 +139,8 @@ class VLMContext:
         return res.text
 
 def load(
-    model_id: str = "smolvlm-500m-q4",
+    model_id: Optional[str] = None,
+    model_path: Optional[str] = None,
     device: str = "auto",
     threads: Union[int, str] = "auto",
     memory_policy: str = "warn",
@@ -153,11 +154,22 @@ def load(
     ngl: Optional[int] = None
 ) -> VLMContext:
     """
-    Loads a VLM inference engine with full parameter accessibility.
-    Supports official catalog models, custom Hugging Face models, and direct local files.
+    Loads a VLM inference engine with clean separation between catalog model_id and custom model_path.
     """
-    if model_id is None or not str(model_id).strip():
-        raise ValueError("Parameter 'model_id' cannot be null or empty.")
+    if model_id is not None and model_path is not None:
+        raise ValueError(
+            "Conflicting parameters: Cannot specify both 'model_id' and 'model_path'. "
+            "Use 'model_id' for catalog presets (e.g. 'smolvlm-500m-q4') or 'model_path' for explicit .gguf file paths."
+        )
+
+    if model_id is None and model_path is None:
+        model_id = "smolvlm-500m-q4"
+
+    if model_id is not None and not str(model_id).strip():
+        raise ValueError("Parameter 'model_id' cannot be empty.")
+
+    if model_path is not None and not str(model_path).strip():
+        raise ValueError("Parameter 'model_path' cannot be empty.")
 
     if context_limit is not None and context_limit < 64:
         raise ValueError(f"Parameter 'context_limit' must be >= 64. Received: {context_limit}")
@@ -167,21 +179,28 @@ def load(
     # 1. Resolve runtime
     runtime_info = resolve_llama_cli(explicit_path=runtime_path)
 
-    # 2. Check if model is a direct file path
-    expanded_model = os.path.abspath(os.path.expanduser(str(model_id)))
-    is_direct_file = os.path.isfile(expanded_model)
-
-    if is_direct_file:
+    # 2. Check if model is via explicit model_path or catalog model_id
+    if model_path is not None:
+        expanded_model = os.path.abspath(os.path.expanduser(str(model_path)))
+        if not os.path.isfile(expanded_model):
+            raise FileNotFoundError(f"Model file not found at 'model_path': {model_path}")
         manifest, model_dir = cache.require_installed_model(expanded_model)
         custom_text_path = expanded_model
         custom_vision_path = os.path.abspath(os.path.expanduser(mmproj_path)) if mmproj_path else None
     else:
-        if allow_download and not cache.is_model_installed(model_id):
-            cache.install(model_id)
+        expanded_model = os.path.abspath(os.path.expanduser(str(model_id)))
+        if os.path.isfile(expanded_model):
+            # Graceful legacy fallback for direct file paths passed to model_id
+            manifest, model_dir = cache.require_installed_model(expanded_model)
+            custom_text_path = expanded_model
+            custom_vision_path = os.path.abspath(os.path.expanduser(mmproj_path)) if mmproj_path else None
+        else:
+            if allow_download and not cache.is_model_installed(model_id):
+                cache.install(model_id)
 
-        manifest, model_dir = cache.require_installed_model(model_id)
-        custom_text_path = None
-        custom_vision_path = os.path.abspath(os.path.expanduser(mmproj_path)) if mmproj_path else None
+            manifest, model_dir = cache.require_installed_model(model_id)
+            custom_text_path = None
+            custom_vision_path = os.path.abspath(os.path.expanduser(mmproj_path)) if mmproj_path else None
 
     # 3. User Freedom: Memory Admission Check
     estimate = MemoryEstimate(

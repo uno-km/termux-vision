@@ -137,3 +137,10 @@ def test_free_model_hub_remote_detection():
     assert is_known_remote_model("hf:myorg/myrepo:model.gguf") is True
     assert is_known_remote_model("https://huggingface.co/myorg/myrepo/resolve/main/model.gguf") is True
     assert is_known_remote_model("http://example.com/model.gguf") is True
+
+def test_load_model_id_and_model_path_exclusivity():
+    from termux_vision.vlm.api import load
+    with pytest.raises(ValueError) as excinfo:
+        load(model_id="smolvlm-500m-q4", model_path="/some/path.gguf")
+    assert "Cannot specify both 'model_id' and 'model_path'" in str(excinfo.value)
+

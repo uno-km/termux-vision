@@ -41,11 +41,11 @@ class ZeroFlickerEngine:
         ubatch_size: Optional[int] = None,
         flash_attn: bool = False,
         no_mmproj_offload: bool = True,
-        context_limit: int = 1024,
+        context_limit: int = 2048,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
-        Executes single-turn multimodal generation.
+        Executes single-turn multimodal generation with unified 2048 context limit.
         """
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Input image not found: {image_path}")
@@ -55,17 +55,19 @@ class ZeroFlickerEngine:
             prompt_path = pf.name
             pf.write(prompt)
 
-        # Resolve binary path via termux-llamacpp / resolver
+        # 1. Resolve canonical execution engine via termux-llamacpp Python SDK (Primary SSOT)
         bin_path = "llama-cli"
+        llamacpp_runtime = None
         try:
             from termux_llamacpp import LlamaRuntime
-            resolved = LlamaRuntime().get_binary_path("llama-cli")
+            llamacpp_runtime = LlamaRuntime()
+            resolved = llamacpp_runtime.get_binary_path("llama-cli")
             if resolved:
                 bin_path = str(resolved)
         except (ImportError, OSError) as _llamacpp_err:
             import logging
             _log = logging.getLogger(__name__)
-            _log.debug("vision: termux-llamacpp resolver unavailable (%s), trying local resolver.", _llamacpp_err)
+            _log.debug("vision: termux-llamacpp SDK runtime unavailable (%s), trying local resolver.", _llamacpp_err)
             try:
                 from .runtime.resolver import resolve_llama_cli
                 bin_path = resolve_llama_cli().executable
@@ -75,8 +77,11 @@ class ZeroFlickerEngine:
                     _res_err,
                 )
 
-        # Prepare Vulkan environment via ameva-runtime
-        proc_env = os.environ.copy()
+        # 2. Prepare execution environment (prioritizing termux-llamacpp and ameva-runtime)
+        if llamacpp_runtime and hasattr(llamacpp_runtime, "prepare_env"):
+            proc_env = llamacpp_runtime.prepare_env(device="vulkan" if self.use_vulkan else "cpu")
+        else:
+            proc_env = os.environ.copy()
         if self.use_vulkan:
             try:
                 from ameva_runtime.adapters import VisionAdapter

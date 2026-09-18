@@ -61,7 +61,7 @@ class SubprocessVLMRuntime:
         self.timeout_sec = timeout_sec
         self.fallback = fallback
         self.adapter = get_adapter(manifest.adapter)
-        self.context_limit = context_limit or manifest.context_limit
+        self.context_limit = context_limit or manifest.context_limit or 2048
         self.custom_ngl = ngl
 
         # Artifact resolution
@@ -180,13 +180,24 @@ class SubprocessVLMRuntime:
         # Strip any obsolete single-turn flags to ensure compatibility with modern llama-cli
         cli_cmd = [arg for arg in cli_cmd if arg not in ("--single-turn", "-st")]
 
+        # Resolve execution environment safely via termux-llamacpp SDK
+        execution_env = os.environ.copy()
+        try:
+            from termux_llamacpp import LlamaRuntime
+            rt = LlamaRuntime()
+            if hasattr(rt, "prepare_env"):
+                execution_env = rt.prepare_env(device=target_backend)
+        except Exception:
+            pass
+
         popen_kwargs = {
             "stdin": subprocess.DEVNULL,
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
             "text": True,
             "encoding": "utf-8",
-            "errors": "replace"
+            "errors": "replace",
+            "env": execution_env,
         }
         if os.name == "posix":
             popen_kwargs["start_new_session"] = True

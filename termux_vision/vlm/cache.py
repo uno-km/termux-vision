@@ -79,7 +79,7 @@ CATALOG: Dict[str, ModelManifest] = {
         adapter="qwen2vl",
         tier="L",
         estimated_memory_mb=2100,
-        context_limit=1024,
+        context_limit=2048,
         preferred_resolution=384,
         artifacts=[
             ArtifactInfo(
@@ -222,7 +222,7 @@ class ModelCacheManager:
                 adapter="smolvlm" if "smol" in model_filename.lower() else "qwen2vl",
                 tier="CUSTOM",
                 estimated_memory_mb=1500,
-                context_limit=1024,
+                context_limit=2048,
                 preferred_resolution=384,
                 artifacts=[
                     ArtifactInfo(
@@ -307,7 +307,7 @@ class ModelCacheManager:
                     adapter="smolvlm" if "smol" in model_id.lower() else "qwen2vl",
                     tier="CUSTOM",
                     estimated_memory_mb=max(500, int((text_size + vision_size) / (1024 * 1024) * 1.3)),
-                    context_limit=1024,
+                    context_limit=2048,
                     preferred_resolution=384,
                     artifacts=[
                         ArtifactInfo(

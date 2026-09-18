@@ -163,7 +163,8 @@ def main():
     p_vlm = subparsers.add_parser("vlm", help="Run VLM Multimodal Image Description / QA with full parameter control")
     p_vlm.add_argument("image_path", help="Path to input image")
     p_vlm.add_argument("-p", "--prompt", default=None, help="Text prompt query")
-    p_vlm.add_argument("-m", "--model", default=None, help="Model ID, catalog preset, or path to custom .gguf model")
+    p_vlm.add_argument("-m", "--model", default=None, help="Catalog model preset identifier (e.g. 'smolvlm-500m-q4')")
+    p_vlm.add_argument("--model-path", default=None, help="Explicit file path to custom .gguf language model")
     p_vlm.add_argument("--mmproj", default=None, help="Path to vision projector model (mmproj-*.gguf)")
     p_vlm.add_argument("-d", "--device", "-b", "--backend", dest="device", default="auto", choices=["auto", "cpu", "vulkan", "gpu", "vulkan-force"], help="Device backend")
     p_vlm.add_argument("--runtime", default=None, help="Explicit path to llama-cli executable")
@@ -317,10 +318,22 @@ def main():
         from ..vlm.api import load
         cache = ModelCacheManager()
 
+        if args.model and args.model_path:
+            parser.error("Conflicting arguments: Cannot specify both '-m/--model' and '--model-path'. Use '--model' for catalog presets or '--model-path' for custom GGUF files.")
+
         try:
-            target_model = resolve_model_id(cache, args.model, interactive=not args.allow_download)
+            load_kwargs = {}
+            if args.model_path:
+                expanded = os.path.abspath(os.path.expanduser(args.model_path))
+                if not os.path.isfile(expanded):
+                    parser.error(f"Specified --model-path does not exist: {args.model_path}")
+                load_kwargs["model_path"] = expanded
+            else:
+                target_model = resolve_model_id(cache, args.model, interactive=not args.allow_download)
+                load_kwargs["model_id"] = target_model
+
             with load(
-                model_id=target_model,
+                **load_kwargs,
                 device=args.device,
                 memory_policy=args.memory_policy,
                 threads=args.threads,

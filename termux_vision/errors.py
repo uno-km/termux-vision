@@ -195,9 +195,11 @@ class RuntimeNotFoundError(TermuxVisionError):
         if searched_paths:
             searched = "\n\nSearched paths:\n" + "\n".join(f"  - {path}" for path in searched_paths)
         message = (
-            f"Required runtime '{executable}' was not found.{searched}\n\n"
-            f"Please ensure llama.cpp is installed on Termux:\n"
-            f"  pkg install termux-llamacpp  (or place llama-cli in PATH / $PREFIX/bin)"
+            f"Required runtime engine '{executable}' was not found.{searched}\n\n"
+            f"Please install the official termux-llamacpp native runtime:\n"
+            f"  - Python:  pip install termux-llamacpp\n"
+            f"  - Node.js: npm install -g termux-llamacpp\n"
+            f"  - Setup:   termux-llama install (compiles native binary if needed)"
         )
         super().__init__(message)
 

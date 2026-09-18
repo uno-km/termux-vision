@@ -1,6 +1,6 @@
-﻿# Release Notes - termux-vision v1.4.2
+# Release Notes - termux-vision v1.4.3
 
-**Release Tag**: `v1.4.2`  
+**Release Tag**: `v1.4.3`  
 **Distribution Channels**: PyPI (`termux-vision`), NPM (`termux-vision`), GitHub Releases  
 **Target Platform**: Android Termux (ARM64 / aarch64 Bionic)  
 **License**: Apache-2.0  
@@ -9,24 +9,37 @@
 
 ## Highlights & Key Architectural Changes
 
-### 1. 100% Zero-Hardcoding Dynamic Provisioning Architecture
-- **Eradicated Static Version Fallbacks**: Permanently eliminated static version strings (`1.4.0`) from `termux_vision/installer.py` and `install.sh`.
-- **Unified 3-Tier Resolution Protocol**:
-  1. **Tier 1 (Explicit Environment Overrides)**: Prioritizes `TERMUX_VISION_RELEASE_BASE` and `TERMUX_VISION_RELEASE_TAG`.
-  2. **Tier 2 (GitHub Releases Latest Canonical SSOT)**: Directly fetches release wheels and native engine tarballs (`termux-vision-vulkan-android-arm64.tar.gz`) from `https://github.com/uno-km/termux-vision/releases/latest/download/`.
-  3. **Tier 3 (Runtime Dynamic Version Resolution)**: Leverages `_resolve_package_version()` using `importlib.metadata` to bind to currently installed package version tags dynamically.
-- **Dynamic HTTP User-Agent**: Replaced static user-agent headers with dynamic package version introspection (`termux-vision-installer/{ver}`).
+### 1. Clean Parameter Separation: Model ID vs Model Path
+- **Eradicated Ambiguous Model Overloading**: Separated catalog preset names from custom GGUF file paths across CLI, Python SDK, and Node.js SDK.
+- **Dedicated CLI Flags**:
+  - `-m, --model`: Exclusively for official catalog identifiers (`smolvlm-500m-q4`, `qwen2-vl-2b-q4`).
+  - `--model-path`: Dedicated flag for explicit custom `.gguf` language model paths.
+  - **Strict Mutual Exclusivity**: Enforces clear fail-fast validation when conflicting arguments are provided.
+- **Dual SDK Alignment**:
+  - Python: `tv.vlm.load(model_id=...)` vs `tv.vlm.load(model_path=...)`.
+  - Node.js: `vision.vlm.load({ modelId })` vs `vision.vlm.load({ modelPath })`.
 
-### 2. Dual Engine Python & Node.js SSOT Synchronization
-- **One-Line Bootstrap Hardening**: Upgraded `install.sh` to query the GitHub Releases API dynamically and use `pip install --upgrade termux-vision`.
-- **Full Packaging Parity**: Fully aligned `pyproject.toml`, `package.json`, and `termux_vision/__init__.py` to `1.4.2`.
+### 2. Universal 2048 Context Window Baseline
+- **Purged Legacy 1024 Limits**: Completely eradicated hardcoded 1024 context limits from custom manifest discovery, catalog entries (`qwen2-vl-2b-q4`), engine defaults, and Node.js cache managers.
+- **Android Memory-Safe Architecture**: Aligned on 2048 tokens as the unified mobile baseline to prevent token overflows during 512x512 image patch tokenization while preserving RAM bounds against Low Memory Killer (LMK).
+
+### 3. Native `termux-llamacpp` Primary SSOT Orchestration
+- **Official Runtime Bridge**: Fully integrated `termux-llamacpp`'s execution environment (`prepare_env`) into `ZeroFlickerEngine` and `SubprocessVLMRuntime`.
+- **Transparent Failure Guidance**: Upgraded `RuntimeNotFoundError` to explicitly guide users to install `pip install termux-llamacpp` and `npm install -g termux-llamacpp`.
 
 ---
 
 ## Detailed Changelog
 
+### Added
+- `--model-path` CLI option for explicit custom GGUF model files.
+- `model_path` parameter to `tv.vlm.load` (Python) and `modelPath` to `vlm.load` (Node.js).
+- Clear mutually exclusive argument verification preventing ambiguous invocation.
+
 ### Changed
-- `install.sh`: Dynamic version resolution via GitHub Releases API and `--upgrade` pip provisioning.
-- `termux_vision/installer.py`: Replaced static release URLs with prioritized 3-Tier candidate URL generator.
-- `CHANGELOG.md`: Added release documentation for `v1.4.2`.
-- Package manifests bumped to `1.4.2`.
+- `termux_vision/vlm/cache.py`: Standardized all custom model manifests and catalog presets to `context_limit=2048`.
+- `termux_vision/vlm/engine.py`: Updated default `context_limit` to 2048; wired `termux_llamacpp.prepare_env`.
+- `termux_vision/vlm/manifest.py`: Updated `ModelManifest.from_dict` fallback `context_limit` to 2048.
+- `termux_vision/errors.py` & `lib/errors.js`: Standardized runtime guidance to recommend `pip install termux-llamacpp` and `npm install -g termux-llamacpp`.
+- `lib/cache.js`: Updated Node.js catalog and custom discovery context limits to 2048.
+- Package versions synchronized to `1.4.3`.

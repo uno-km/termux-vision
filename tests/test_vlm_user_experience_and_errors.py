@@ -29,6 +29,7 @@ def test_req1_model_selection_direct_custom_gguf():
         manifest, model_dir = cache.require_installed_model(fake_model)
         assert manifest.tier == "CUSTOM"
         assert manifest.model_id == "my_custom_model"
+        assert manifest.context_limit == 2048
         assert model_dir == tmpdir
 
 def test_req4_missing_model_shows_available_local_models():
@@ -231,3 +232,4 @@ def test_custom_directory_model_discovery():
         manifest, mdir = cache.require_installed_model("my-custom-vision")
         assert mdir == custom_dir
         assert manifest.model_id == "my-custom-vision"
+        assert manifest.context_limit == 2048
