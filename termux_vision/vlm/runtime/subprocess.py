@@ -172,6 +172,19 @@ class SubprocessVLMRuntime:
             for st in stop_tokens:
                 cli_cmd.extend(["-r", str(st)])
 
+        # Strip --chat-template if present to allow model's native GGUF multimodal handler to format image markers cleanly
+        clean_cmd = []
+        skip_next = False
+        for arg in cli_cmd:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg == "--chat-template":
+                skip_next = True
+                continue
+            clean_cmd.append(arg)
+        cli_cmd = clean_cmd
+
         # Explicitly enforce single-turn execution and disable conversation REPL
         if "--single-turn" not in cli_cmd and "-st" not in cli_cmd:
             cli_cmd.append("--single-turn")
