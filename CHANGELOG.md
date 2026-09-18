@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.2] - 2026-09-18
+
+### Changed & Hardened
+- **Zero-Hardcoding Dynamic Latest-First Provisioning Architecture**:
+  - Completely purged hardcoded fallback version strings (`1.4.0`) from `termux_vision/installer.py` and `install.sh`.
+  - Implemented dynamic package version resolution (`_resolve_package_version`) and GitHub API release querying.
+  - Prioritized invariant `releases/latest/download/` canonical endpoints for both release wheels and native engine tarballs.
+  - Upgraded PyPI installation command to use `--upgrade` flag.
+  - Synchronized versions across `package.json`, `pyproject.toml`, and `termux_vision/__init__.py` to `1.4.2`.
+
 ## [1.4.0] - 2026-09-07
 
 ### Added
