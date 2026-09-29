@@ -28,7 +28,7 @@ def parse_args():
         "-d", "--device", "-b", "--backend",
         dest="device",
         default="auto",
-        choices=["auto", "gpu", "vulkan", "cpu", "vulkan-force"],
+        choices=["auto", "gpu", "vulkan", "opencl", "cpu"],
         help="Compute acceleration device backend"
     )
 
@@ -125,7 +125,7 @@ def execute_vlm(args):
     ]
 
     # Device backend routing
-    if dev in ("gpu", "vulkan", "vulkan-force"):
+    if dev in ("gpu", "vulkan"):
         ngl = args.ngl if args.ngl is not None else 99
         base_cmd.extend([
             "-ngl", str(ngl),
@@ -163,7 +163,7 @@ def execute_vlm(args):
         "mmproj": args.mmproj,
         "exit_code": proc.returncode,
         "wall_time_s": round(elapsed_wall, 2),
-        "cpu_mapped_mib": 0.00 if dev in ("gpu", "vulkan", "vulkan-force") else None,
+        "cpu_mapped_mib": 0.00 if dev in ("gpu", "vulkan") else None,
         "vulkan_model_mib": None,
         "vulkan_compute_mib": None,
         "kv_buffer_mib": None,

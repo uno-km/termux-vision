@@ -58,14 +58,15 @@ def test_runtime_output_decodes_text():
 
         rt = SubprocessVLMRuntime(manifest, model_dir=tmpdir, executable=sys.executable, backend="cpu")
 
-        with patch("subprocess.Popen") as mock_popen:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 0
-            mock_proc.communicate.return_value = (
-                "> assistant\nThis is a validated test image description.\n[Generation: 14.5 t/s]\n",
-                ""
+        from termux_llamacpp.engine import VLMResponse
+        with patch("termux_llamacpp.LlamaRuntime.generate_vlm") as mock_vlm:
+            mock_vlm.return_value = VLMResponse(
+                text="This is a validated test image description.",
+                backend="cpu",
+                generation_tps=14.5,
+                prompt_tps=50.0,
+                latency_ms=1000.0,
             )
-            mock_popen.return_value = mock_proc
 
             dummy_img = os.path.join(tmpdir, "test.jpg")
             with open(dummy_img, "wb") as f: f.write(b"JPEG")

@@ -12,6 +12,7 @@ from ..adapters import get_adapter
 from ..result import VLMResult, InferenceMetrics
 from ...errors import (
     SubprocessRuntimeError,
+    RuntimeNotFoundError,
     VulkanNotAvailableError,
     GpuExecutionError
 )
