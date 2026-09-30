@@ -94,20 +94,21 @@ def canny(image: np.ndarray, low_threshold: float = 50.0, high_threshold: float 
     """
     gray = to_grayscale(image)
 
-    # 1. Accelerated Vulkan / C Path
+    # 1. Accelerated Native Vulkan / C++ / C Path
     try:
-        from ..csrc.backend import has_c_backend, has_vulkan_backend, c_canny
-        if has_vulkan_backend() or has_c_backend() or str(device).lower().strip() in ("vulkan", "gpu"):
-            return c_canny(gray, low_threshold=low_threshold, high_threshold=high_threshold, device=device)
+        from ..csrc.backend import c_canny
+        return c_canny(gray, low_threshold=low_threshold, high_threshold=high_threshold, device=device)
     except Exception as e:
-        if str(device).lower().strip() in ("vulkan", "gpu"):
+        dev_str = str(device).lower().strip()
+        # Fail-Fast: Never swallow exceptions when explicit backend is requested
+        if dev_str in ("vulkan", "gpu", "opencl", "cpu", "cpu_neon"):
             raise e
         import logging
         logging.getLogger("termux_vision.cv.filters").debug(
-            "[termux-vision] C/Vulkan backend dispatch failed, falling back to NumPy: %s", e
+            "[termux-vision] Auto backend dispatch failed, falling back to NumPy: %s", e
         )
 
-    # 2. Pure NumPy Path
+    # 2. Pure NumPy Path (100% Vectorized Slicing - Zero Python For-Loops)
     blurred = gaussian_blur(gray, size=blur_size, sigma=sigma)
     _, _, magnitude, angle = sobel(blurred)
     
@@ -116,40 +117,47 @@ def canny(image: np.ndarray, low_threshold: float = 50.0, high_threshold: float 
         magnitude = (magnitude / mag_max) * 255.0
 
     h, w = magnitude.shape
+    angle_deg = np.rad2deg(angle) % 180.0
+
+    padded = np.pad(magnitude, ((1, 1), (1, 1)), mode='constant', constant_values=0)
+    c = padded[1:-1, 1:-1]
+    left = padded[1:-1, :-2]
+    right = padded[1:-1, 2:]
+    top = padded[:-2, 1:-1]
+    bottom = padded[2:, 1:-1]
+    top_left = padded[:-2, :-2]
+    top_right = padded[:-2, 2:]
+    bottom_left = padded[2:, :-2]
+    bottom_right = padded[2:, 2:]
+
+    mask_0 = (angle_deg < 22.5) | (angle_deg >= 157.5)
+    mask_45 = (angle_deg >= 22.5) & (angle_deg < 67.5)
+    mask_90 = (angle_deg >= 67.5) & (angle_deg < 112.5)
+    mask_135 = (angle_deg >= 112.5) & (angle_deg < 157.5)
+
     nms = np.zeros((h, w), dtype=np.float32)
-    angle_deg = np.rad2deg(angle) % 180
+    keep = (
+        (mask_0 & (c >= left) & (c >= right)) |
+        (mask_45 & (c >= top_right) & (c >= bottom_left)) |
+        (mask_90 & (c >= top) & (c >= bottom)) |
+        (mask_135 & (c >= top_left) & (c >= bottom_right))
+    )
+    nms[keep] = c[keep]
 
-    for i in range(1, h - 1):
-        for j in range(1, w - 1):
-            deg = angle_deg[i, j]
-            if (0 <= deg < 22.5) or (157.5 <= deg <= 180):
-                p1, p2 = magnitude[i, j - 1], magnitude[i, j + 1]
-            elif 22.5 <= deg < 67.5:
-                p1, p2 = magnitude[i - 1, j + 1], magnitude[i + 1, j - 1]
-            elif 67.5 <= deg < 112.5:
-                p1, p2 = magnitude[i - 1, j], magnitude[i + 1, j]
-            else:
-                p1, p2 = magnitude[i - 1, j - 1], magnitude[i + 1, j + 1]
+    strong = (nms >= high_threshold)
+    weak = (nms >= low_threshold) & (nms < high_threshold)
 
-            if magnitude[i, j] >= p1 and magnitude[i, j] >= p2:
-                nms[i, j] = magnitude[i, j]
-
-    strong = 255
-    weak = 75
     res = np.zeros((h, w), dtype=np.uint8)
+    res[strong] = 255
 
-    strong_i, strong_j = np.where(nms >= high_threshold)
-    weak_i, weak_j = np.where((nms >= low_threshold) & (nms < high_threshold))
-
-    res[strong_i, strong_j] = strong
-    res[weak_i, weak_j] = weak
-
-    for i in range(1, h - 1):
-        for j in range(1, w - 1):
-            if res[i, j] == weak:
-                if np.any(res[i - 1:i + 2, j - 1:j + 2] == strong):
-                    res[i, j] = strong
-                else:
-                    res[i, j] = 0
+    # Vectorized 8-connected Hysteresis propagation
+    if np.any(weak) and np.any(strong):
+        pad_str = np.pad(strong, ((1, 1), (1, 1)), mode='constant', constant_values=False)
+        any_strong = (
+            pad_str[:-2, :-2] | pad_str[:-2, 1:-1] | pad_str[:-2, 2:] |
+            pad_str[1:-1, :-2]                      | pad_str[1:-1, 2:] |
+            pad_str[2:, :-2]  | pad_str[2:, 1:-1]  | pad_str[2:, 2:]
+        )
+        res[weak & any_strong] = 255
 
     return res

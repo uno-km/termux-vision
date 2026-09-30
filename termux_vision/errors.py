@@ -229,3 +229,66 @@ class CameraPermissionError(TermuxVisionError):
 
 class TermuxAPIUnavailableError(TermuxVisionError):
     pass
+
+
+class OpenCLNotImplementedError(TermuxVisionError):
+    DEFAULT_CODE = "E014_OPENCL_NOT_IMPLEMENTED"
+
+    def __init__(self, reason: str = ""):
+        self.reason = reason
+        detail = f"\nDetail: {reason}" if reason else ""
+        msg = (
+            f"OpenCL compute backend is not currently implemented in this release.{detail}\n\n"
+            f"[Hardware Context] OpenCL vision compute pipeline is reserved for ARM Mali/Exynos devices "
+            f"(e.g., Galaxy S20, A53). Tracked under Jira [SCRUM-VISION-OPENCL].\n"
+            f"  - Use Vulkan GPU: --gpu or --device vulkan\n"
+            f"  - Use CPU NEON:  --cpu or --device cpu"
+        )
+        super().__init__(msg)
+
+
+class IncompleteRuntimeBinaryError(TermuxVisionError):
+    DEFAULT_CODE = "E015_INCOMPLETE_RUNTIME_BINARY"
+
+    def __init__(self, binary_path: str, reason: str = ""):
+        self.binary_path = binary_path
+        self.reason = reason
+        detail = f"\nDetail: {reason}" if reason else ""
+        msg = (
+            f"Native binary at '{binary_path}' lacks required multimodal vision capabilities (--mmproj missing).{detail}\n\n"
+            f"[Root Cause] Detected text-only build artifact (e.g. llama-completion ~4.9MB) instead of full multimodal runtime (>=5.8MB).\n"
+            f"[Action Required] Run official installer to provision verified SOTA prebuilt assets:\n"
+            f"  termux-vision install -y\n"
+            f"Or compile from source: termux-vision install --from-source"
+        )
+        super().__init__(msg)
+
+
+class NativeBuildError(TermuxVisionError):
+    DEFAULT_CODE = "E016_NATIVE_BUILD_FAILED"
+
+    def __init__(self, target: str, error_log: str = ""):
+        self.target = target
+        self.error_log = error_log
+        log_snippet = f"\nCompiler Output:\n{error_log}" if error_log else ""
+        msg = (
+            f"Failed to compile native C++ vision module '{target}'.{log_snippet}\n\n"
+            f"[Action Required] Ensure clang and build prerequisites are installed:\n"
+            f"  pkg install -y clang build-essential\n"
+            f"Or use prebuilt release assets: termux-vision install"
+        )
+        super().__init__(msg)
+
+
+class InstallationSmokeTestError(TermuxVisionError):
+    DEFAULT_CODE = "E017_INSTALL_SMOKE_TEST_FAILED"
+
+    def __init__(self, test_name: str, reason: str = ""):
+        self.test_name = test_name
+        self.reason = reason
+        msg = (
+            f"Installation smoke test failed for component '{test_name}': {reason}\n"
+            f"The environment cannot be certified as production-ready. Please review diagnostic logs."
+        )
+        super().__init__(msg)
+

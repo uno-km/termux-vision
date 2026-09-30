@@ -45,17 +45,32 @@ def run_doctor(probe_vulkan: bool = False, full_check: bool = False) -> Dict[str
         },
         "vlm_runtime": {
             "llama_cli_available": shutil.which("llama-cli") is not None,
+            "multimodal_capable": False,
+            "multimodal_status": "unverified",
             "installed_models_count": 0,
             "cache_dir": cache_mgr.cache_root
         },
         "native_backends": {
             "has_c_backend": csrc.has_c_backend(),
+            "has_vulkan_backend": csrc.has_vulkan_backend(),
+            "vulkan_device_name": csrc.get_vulkan_device_name(),
             "c_backend_errors": csrc.get_c_backend_load_errors(),
             "cpp_backend_errors": csrc.get_cpp_backend_load_errors()
         },
         "recommended_preset": "Tier M (smolvlm-500m / 4-Threads CPU Reference)",
         "warnings": []
     }
+
+    # Verify multimodal capability via installer gatekeeper
+    try:
+        from ..installer import verify_multimodal_support
+        mm_ok, mm_msg = verify_multimodal_support()
+        report["vlm_runtime"]["multimodal_capable"] = mm_ok
+        report["vlm_runtime"]["multimodal_status"] = mm_msg
+        if not mm_ok and report["vlm_runtime"]["llama_cli_available"]:
+            report["warnings"].append(f"llama-cli detected but lacks multimodal support: {mm_msg}")
+    except Exception as _mm_err:
+        report["vlm_runtime"]["multimodal_status"] = f"Check failed: {_mm_err}"
 
     # RAM Inspection
     try:

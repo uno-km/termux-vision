@@ -152,6 +152,10 @@ def main():
     p_canny.add_argument("--low", type=float, default=40.0, help="Low hysteresis threshold")
     p_canny.add_argument("--high", type=float, default=120.0, help="High hysteresis threshold")
     p_canny.add_argument("--resize", type=str, default=None, help="Resize image (e.g. 512x512)")
+    p_canny.add_argument("-d", "--device", "-b", "--backend", dest="device", default="auto", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Compute backend device")
+    p_canny.add_argument("--gpu", action="store_const", const="gpu", dest="device", help="Force 100%% Vulkan GPU Compute")
+    p_canny.add_argument("--cpu", action="store_const", const="cpu", dest="device", help="Force 100%% CPU ARM64 NEON")
+    p_canny.add_argument("--opencl", action="store_const", const="opencl", dest="device", help="Force OpenCL Compute")
 
     # Command: detect-face
     p_face = subparsers.add_parser("detect-face", help="Detect face-like candidate regions")
@@ -169,6 +173,7 @@ def main():
     p_vlm.add_argument("-d", "--device", "-b", "--backend", dest="device", default="auto", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Device backend")
     p_vlm.add_argument("--gpu", action="store_const", const="gpu", dest="device", help="Force Vulkan GPU acceleration")
     p_vlm.add_argument("--cpu", action="store_const", const="cpu", dest="device", help="Force ARM64 CPU execution")
+    p_vlm.add_argument("--opencl", action="store_const", const="opencl", dest="device", help="Force OpenCL backend")
     p_vlm.add_argument("--runtime", default=None, help="Explicit path to llama-cli executable")
     p_vlm.add_argument("--memory-policy", default="warn", choices=["warn", "strict", "unrestricted"], help="Memory admission policy")
     p_vlm.add_argument("--allow-download", action="store_true", help="Automatically download model if missing from cache")
@@ -192,14 +197,19 @@ def main():
     p_bench = subparsers.add_parser("benchmark", help="Run on-device vision benchmark")
     p_bench.add_argument("image_path", nargs="?", default=None, help="Optional image path for VLM bench")
     p_bench.add_argument("-m", "--model", default="smolvlm-500m-q4", help="Model ID for benchmark")
-    p_bench.add_argument("--device", default="auto", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Device backend")
+    p_bench.add_argument("-d", "--device", "-b", "--backend", dest="device", default="auto", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Compute backend device")
+    p_bench.add_argument("--gpu", action="store_const", const="gpu", dest="device", help="Force 100%% Vulkan GPU Compute")
+    p_bench.add_argument("--cpu", action="store_const", const="cpu", dest="device", help="Force 100%% CPU ARM64 NEON")
+    p_bench.add_argument("--opencl", action="store_const", const="opencl", dest="device", help="Force OpenCL Compute")
     p_bench.add_argument("--memory-policy", default="unrestricted", choices=["warn", "strict", "unrestricted"])
     p_bench.add_argument("--runs", type=int, default=3, help="Benchmark run count")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark results in JSON format")
 
     # Command: install
-    p_inst = subparsers.add_parser("install", help="Verify and install required VLM runtime dependencies (termux-llamacpp)")
+    p_inst = subparsers.add_parser("install", help="Verify and provision native vision engines and multimodal VLM runtime")
     p_inst.add_argument("-y", "-Y", "--yes", "-yes", "--all", "-a", dest="auto_yes", action="store_true", help="Automatically approve installation and updates without interactive prompts")
+    p_inst.add_argument("--from-source", action="store_true", help="Force local native C++ compilation via Clang/NEON instead of prebuilt assets")
+    p_inst.add_argument("--force", action="store_true", help="Force reinstallation even if assets are up-to-date")
 
     # ── AMEVA Component Protocol v1 ─────────────────────────────────────────
     try:
@@ -215,9 +225,18 @@ def main():
     args = parser.parse_args()
 
     if args.command == "install":
-        from ..installer import ensure_llamacpp_runtime
-        ok = ensure_llamacpp_runtime(auto_yes=getattr(args, "auto_yes", False), interactive=True)
-        sys.exit(0 if ok else 1)
+        from ..installer import install_all
+        try:
+            ok = install_all(
+                from_source=getattr(args, "from_source", False),
+                force=getattr(args, "force", False),
+                auto_yes=getattr(args, "auto_yes", False),
+                verbose=True,
+            )
+            sys.exit(0 if ok else 1)
+        except Exception as inst_err:
+            print(f"\n[ERROR: Installation Failed] {inst_err}", file=sys.stderr)
+            sys.exit(1)
 
     if args.command == "doctor":
         rep = run_doctor(probe_vulkan=getattr(args, "probe_vulkan", False), full_check=getattr(args, "full", False))
@@ -302,10 +321,10 @@ def main():
 
         gray = to_grayscale(img)
         t0 = time.perf_counter()
-        edges = canny(gray, low_threshold=args.low, high_threshold=args.high)
+        edges = canny(gray, low_threshold=args.low, high_threshold=args.high, device=args.device)
         lat = (time.perf_counter() - t0) * 1000.0
         save_image(edges, args.output, metadata="strip")
-        print(f"[+] Canny edges computed in {lat:.2f}ms. Saved to {args.output}")
+        print(f"[+] Canny edges computed on [{args.device.upper()}] in {lat:.2f}ms. Saved to {args.output}")
         sys.exit(EXIT_SUCCESS)
 
     elif args.command == "detect-face":
@@ -429,11 +448,18 @@ def main():
         t_res = (time.perf_counter() - t0) * 1000.0
         print(f"  - Resize (512x512 -> 256x256): {t_res:.2f} ms")
 
-        t1 = time.perf_counter()
         gray = to_grayscale(res)
-        edges = canny(gray, 40, 120)
-        t_can = (time.perf_counter() - t1) * 1000.0
-        print(f"  - Grayscale & Canny Edge (256x256): {t_can:.2f} ms")
+        # Warmup
+        canny(gray, 40, 120, device=args.device)
+        canny_times = []
+        runs = max(1, getattr(args, "runs", 3))
+        for _ in range(runs):
+            t1 = time.perf_counter()
+            edges = canny(gray, 40, 120, device=args.device)
+            canny_times.append((time.perf_counter() - t1) * 1000.0)
+        t_can_mean = float(np.mean(canny_times))
+        t_can_min = float(np.min(canny_times))
+        print(f"  - Grayscale & Canny Edge (256x256, {args.device.upper()}, {runs} runs): Mean {t_can_mean:.2f} ms (Min: {t_can_min:.2f} ms)")
 
         detector = HaarCascadeDetector()
         t2 = time.perf_counter()

@@ -18,11 +18,11 @@ static std::mutex g_cv_mutex;
 // Thread-local scratch buffers with RAII automatic deallocation on thread exit
 struct ThreadScratchBuffer {
     float* mag;
-    float* angle_deg;
+    unsigned char* dir;
     int* queue;
     size_t capacity;
 
-    ThreadScratchBuffer() : mag(NULL), angle_deg(NULL), queue(NULL), capacity(0) {}
+    ThreadScratchBuffer() : mag(NULL), dir(NULL), queue(NULL), capacity(0) {}
 
     ~ThreadScratchBuffer() {
         cleanup();
@@ -30,20 +30,20 @@ struct ThreadScratchBuffer {
 
     void cleanup() {
         if (mag) { free(mag); mag = NULL; }
-        if (angle_deg) { free(angle_deg); angle_deg = NULL; }
+        if (dir) { free(dir); dir = NULL; }
         if (queue) { free(queue); queue = NULL; }
         capacity = 0;
     }
 
     int ensure_capacity(size_t required_px) {
-        if (capacity >= required_px && mag && angle_deg && queue) {
+        if (capacity >= required_px && mag && dir && queue) {
             return 1;
         }
         cleanup();
         mag = (float*)malloc(required_px * sizeof(float));
-        angle_deg = (float*)malloc(required_px * sizeof(float));
+        dir = (unsigned char*)malloc(required_px * sizeof(unsigned char));
         queue = (int*)malloc(required_px * sizeof(int));
-        if (!mag || !angle_deg || !queue) {
+        if (!mag || !dir || !queue) {
             cleanup();
             return 0;
         }
@@ -59,7 +59,7 @@ EXPORT void fast_cv_cleanup_context() {
     tl_scratch.cleanup();
 }
 
-// C++ Native CPU multi-threaded / vectorized Canny Edge Detection implementation with BFS Hysteresis
+// C++ Native CPU high-speed Canny Edge Detection (Zero-Trigonometric, Direct Ratio Quantization)
 EXPORT int fast_canny_cpp(
     const unsigned char* src, 
     unsigned char* dst, 
@@ -75,10 +75,13 @@ EXPORT int fast_canny_cpp(
         return 0;
     }
     float* mag = tl_scratch.mag;
-    float* angle_deg = tl_scratch.angle_deg;
+    unsigned char* dir = tl_scratch.dir;
     int* queue = tl_scratch.queue;
 
-    // Step 1. Sobel Gradient & Angle
+    const float tan22_5 = 0.41421356f;
+    const float tan67_5 = 2.41421356f;
+
+    // Step 1. Sobel Gradient & Fast Direction Quantization (No atan2f, pure ratio comparisons)
     for (int y = 1; y < height - 1; y++) {
         int y_prev = (y - 1) * width;
         int y_curr = y * width;
@@ -86,23 +89,30 @@ EXPORT int fast_canny_cpp(
 
         for (int x = 1; x < width - 1; x++) {
             int p00 = src[y_prev + (x - 1)];
-            int p01 = src[y_prev + x];
             int p02 = src[y_prev + (x + 1)];
             int p10 = src[y_curr + (x - 1)];
             int p12 = src[y_curr + (x + 1)];
             int p20 = src[y_next + (x - 1)];
-            int p21 = src[y_next + x];
             int p22 = src[y_next + (x + 1)];
 
             float gx = (float)(-p00 + p02 - 2 * p10 + 2 * p12 - p20 + p22);
-            float gy = (float)(-p00 - 2 * p01 - p02 + p20 + 2 * p21 + p22);
+            float gy = (float)(-p00 - 2 * src[y_prev + x] - p02 + p20 + 2 * src[y_next + x] + p22);
 
-            mag[y_curr + x] = sqrtf(gx * gx + gy * gy);
+            int idx = y_curr + x;
+            mag[idx] = sqrtf(gx * gx + gy * gy);
 
-            float rad = atan2f(gy, gx);
-            float deg = rad * (180.0f / 3.1415926535f);
-            if (deg < 0.0f) deg += 180.0f;
-            angle_deg[y_curr + x] = deg;
+            float abs_gx = fabsf(gx);
+            float abs_gy = fabsf(gy);
+
+            if (abs_gy <= abs_gx * tan22_5) {
+                dir[idx] = 0; // Horizontal: 0 deg
+            } else if (abs_gy >= abs_gx * tan67_5) {
+                dir[idx] = 2; // Vertical: 90 deg
+            } else if ((gx > 0.0f) == (gy > 0.0f)) {
+                dir[idx] = 1; // Diagonal: 45 deg
+            } else {
+                dir[idx] = 3; // Anti-diagonal: 135 deg
+            }
         }
     }
 
@@ -120,21 +130,26 @@ EXPORT int fast_canny_cpp(
             float c = mag[idx];
             if (c < low_thresh) continue;
 
-            float deg = angle_deg[idx];
-            float p1 = 0.0f, p2 = 0.0f;
+            unsigned char d = dir[idx];
+            float p1, p2;
 
-            if ((deg >= 0.0f && deg < 22.5f) || (deg >= 157.5f && deg <= 180.0f)) {
-                p1 = mag[y_curr + (x - 1)];
-                p2 = mag[y_curr + (x + 1)];
-            } else if (deg >= 22.5f && deg < 67.5f) {
-                p1 = mag[y_prev + (x + 1)];
-                p2 = mag[y_next + (x - 1)];
-            } else if (deg >= 67.5f && deg < 112.5f) {
-                p1 = mag[y_prev + x];
-                p2 = mag[y_next + x];
-            } else {
-                p1 = mag[y_prev + (x - 1)];
-                p2 = mag[y_next + (x + 1)];
+            switch (d) {
+                case 0: // Horizontal
+                    p1 = mag[y_curr + (x - 1)];
+                    p2 = mag[y_curr + (x + 1)];
+                    break;
+                case 1: // 45 deg
+                    p1 = mag[y_prev + (x + 1)];
+                    p2 = mag[y_next + (x - 1)];
+                    break;
+                case 2: // Vertical (90 deg)
+                    p1 = mag[y_prev + x];
+                    p2 = mag[y_next + x];
+                    break;
+                default: // 135 deg
+                    p1 = mag[y_prev + (x - 1)];
+                    p2 = mag[y_next + (x + 1)];
+                    break;
             }
 
             if (c >= p1 && c >= p2) {
