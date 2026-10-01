@@ -51,3 +51,7 @@ scratch/
 *.whl
 *.whl.sha256
 releases/
+build_assets/
+*.tar.gz
+*.tar.gz.sha256
+
