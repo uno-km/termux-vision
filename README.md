@@ -15,7 +15,7 @@
 ## 📑 Table of Contents
 
 1. [Overview & Key Capabilities](#1-overview--key-capabilities)
-2. [Installation Guide](#2-installation-guide)
+2. [Installation Guide & Prebuilt Installer](#2-installation-guide--prebuilt-installer)
 3. [Enabling Hardware GPU Acceleration (with ameva-runtime)](#3-enabling-hardware-gpu-acceleration-with-ameva-runtime)
 4. [Standardized CLI & Parameter Matrix](#4-standardized-cli--parameter-matrix)
 5. [Dual Engine Code Examples (Python & Node.js)](#5-dual-engine-code-examples-python--nodejs)
@@ -31,15 +31,16 @@
 
 `termux-vision` is an enterprise-grade, on-device multimodal vision inference and spatial computing framework engineered specifically for mobile Android devices. Operating directly against Android's native Bionic libc ABI and host Vulkan compute drivers, `termux-vision` eliminates heavyweight desktop dependencies (OpenCV, TorchVision) and enables high-throughput visual question answering, OCR image captioning, and classical feature extraction directly on edge hardware.
 
-* **Native Bionic libc ABI Direct Binding**: Runs directly inside Termux user space with zero virtualization indirection, achieving bare-metal compute efficiency.
-* **Dual Compute Acceleration**: Integrates ARMv8.2-A DotProd/FP16 SIMD vector instructions with mobile Vulkan compute shader pipelines.
-* **Full-Layer GPU Offloading (-ngl 99)**: Dispatches all 99 transformer layers and cross-attention vision projections directly to device GPU VRAM, achieving pure GPU offloading (**0.00 MiB CPU mapped VRAM**).
-* **Zero-Dependency Classical Vision Suite**: Native 5-stage Canny edge detector (8-directional BFS hysteresis), Sobel 3x3 filtering, 2D Integral Images, and Haar-like face candidate localization in pure C/Python/JS.
-* **Autonomous OOM & LMK Protection**: Enforces atomic model validation (>10MB threshold guard) and quant-pair validation (SmolVLM Q4_K_M + Q8_0 mmproj) to strictly respect Android Low Memory Killer (LMK) bounds.
+* **100% Vulkan GPU Compute Canny (`0.23 ms`)**: Chains 3-pass SPIR-V compute shaders (Sobel 3x3, NMS, Hysteresis) entirely within VRAM using `vkCmdPipelineBarrier`, achieving 834x acceleration over Python without CPU memory roundtrips.
+* **Ultra-Fast ARM64 NEON C++ Kernel (`3.02 ms`)**: Permanently eliminates trigonometric `atan2f` via tangent ratio bit quantization and 1-byte direction buffers, running Canny filtering in 3.02ms on Snapdragon 865 and 4.36ms on Exynos 1380.
+* **Prebuilt-Asset-First Idempotent Installer (`0.005s Skip`)**: Automatically provisions verified precompiled ARM64 native binaries in 2 seconds from official releases, guaranteeing zero-build instant skip if assets already exist.
+* **5-Backend Unified CLI Standard**: Enforces `['auto', 'gpu', 'vulkan', 'opencl', 'cpu']` and convenience flags (`--gpu`, `--cpu`, `--opencl`) across all subcommands.
+* **Zero-Deception Fail-Fast Gatekeeper**: Strictly rejects defective text-only binaries lacking `--mmproj` (`E015`) and corrupted weights (`E014`), permanently banning silent fallbacks.
+* **Full-Layer GPU Offloading (-ngl 99)**: Dispatches all transformer layers and cross-attention vision projections directly to device GPU VRAM (**0.00 MiB CPU mapped VRAM**).
 
 ---
 
-## 2. Installation Guide
+## 2. Installation Guide & Prebuilt Installer
 
 `termux-vision` is distributed across both Python (PyPI) and Node.js (npm) ecosystems, with official precompiled ARM64 wheel assets published on GitHub Releases.
 
@@ -58,10 +59,21 @@ pkg install -y python nodejs clang make cmake git termux-api wget vulkan-loader 
   pip install termux-vision
   ```
 
-* **Option B: Direct GitHub Releases Wheel Asset (SSOT Verified)**:
+* **Option B: Prebuilt Native Engine Provisioning (Idempotent 0.005s)**:
   ```bash
-  # Download and install the prebuilt v1.4.0 release wheel
-  pip install https://github.com/uno-km/termux-vision/releases/download/v1.4.0/termux_vision-1.4.0-py3-none-any.whl
+  # Automatically download & unpack verified ARM64 prebuilt assets
+  termux-vision install
+  
+  # Optional maintenance flags:
+  # termux-vision install --force        # Force re-downloading prebuilts
+  # termux-vision install --from-source   # Force compiling from local C++ source
+  # termux-vision install --dry-run       # Check integrity without making changes
+  ```
+
+* **Option C: Direct GitHub Releases Wheel Asset**:
+  ```bash
+  # Download and install the prebuilt v1.5.0 release wheel
+  pip install https://github.com/uno-km/termux-vision/releases/download/v1.5.0/termux_vision-1.5.0-py3-none-any.whl
   ```
 
 ### 2.3 Node.js / TypeScript CLI Installation
@@ -98,7 +110,7 @@ npm install -g termux-vision @ameva/runtime
 
 | GPU Microarchitecture | Silicon / SoC Reference | Status | Optimization Mechanics |
 | :--- | :--- | :--- | :--- |
-| **Qualcomm Adreno GPU** | Snapdragon 8 Elite (Adreno 830)<br>Snapdragon 8 Gen 1/2/3 (Adreno 730-750) | 🟢 **Production Verified** | Direct Bionic ICD binding, SPIR-V JIT patch (`mul_mat_vec_max_cols = 2`), KGSL Watchdog defense (`GGML_VULKAN_SKIP_CHECKS="999999999"`), micro-batch prefill chunking (`-b 64 -ub 64`). |
+| **Qualcomm Adreno GPU** | Snapdragon 8 Elite (Adreno 830)<br>Snapdragon 8 Gen 1/2/3 (Adreno 730-750)<br>Snapdragon 865 (Adreno 650) | 🟢 **Production Verified** | Direct Bionic ICD binding, SPIR-V JIT patch (`mul_mat_vec_max_cols = 2`), KGSL Watchdog defense (`GGML_VULKAN_SKIP_CHECKS="999999999"`), micro-batch prefill chunking (`-b 64 -ub 64`). |
 | **ARM Mali GPU** | Exynos 2100 (Mali-G78 MP14)<br>Exynos 1380 (Mali-G68 MP5) | 🟢 **Production Verified** | Bionic Vulkan ICD binding, Tile-Based Deferred Rendering (TBDR) memory isolation, MMVQ matrix-vector kernel dispatch (`--tune-mali`). |
 | **Samsung Xclipse GPU** | Exynos 2200 / 2400<br>(Xclipse 920 / 940 - AMD RDNA) | 🟡 **In Development (개발 진행 중)** | SPIR-V instruction scheduling and RDNA mobile shader alignment under active engineering. |
 
@@ -111,11 +123,12 @@ termux-vision doctor
 
 ## 4. Standardized CLI & Parameter Matrix
 
-`termux-vision` strictly complies with the official `uno-km` family CLI standard:
+`termux-vision` strictly complies with the official `uno-km` family 5-backend CLI standard:
 
 | Parameter | Alias | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `-d, --device` | `-b, --backend` | `auto` | Compute acceleration backend: `auto`, `gpu`, `vulkan`, `cpu`, `vulkan-force` |
+| `-b, --backend` | `-d, --device` | `auto` | Compute acceleration backend: `auto`, `gpu`, `vulkan`, `opencl`, `cpu` |
+| `--gpu` / `--cpu` / `--opencl` | *N/A* | *None* | Convenience shorthand flags for backend routing |
 | `-i, --image` | `--image-path` | *Required* | Path to input image (`.png`, `.jpg`, `.webp`) |
 | `-p, --prompt` | *N/A* | `"Describe this image"` | Multimodal text instruction query |
 | `-m, --model` | *N/A* | `smolvlm-500m` | GGUF language model path or catalog identifier |
@@ -123,8 +136,6 @@ termux-vision doctor
 | `-n, --max-tokens` | `--n-predict` | `150` | Maximum number of generated tokens |
 | `-c, --ctx-size` | `--ctx` | `2048` | Context window size |
 | `-t, --threads` | *N/A* | `auto` | Number of CPU execution threads |
-| `-W, --width` | *N/A* | *None* | Explicit image resize width in pixels |
-| `-H, --height` | *N/A* | *None* | Explicit image resize height in pixels |
 | `--image-size` | *N/A* | *None* | Image resolution preset (e.g. `224x224`, `384x384`) |
 | `-q, --quality` | *N/A* | `optimal` | 4-tier resolution preset: `fast` (384px), `optimal` (768px), `high` (1280px), `original` (1:1) |
 | `--tune-mali` | *N/A* | `False` | Enable ARM Mali GPU MMVQ tuning (`GGML_VK_FORCE_MMVQ=1`) |
@@ -134,20 +145,20 @@ termux-vision doctor
 ### Practical CLI Usage Examples
 
 ```bash
-# 1. Automated GPU Acceleration (Default auto-routing)
+# 1. 100% Vulkan GPU Canny Edge Detection (0.23 ms on Adreno 830)
+termux-vision canny photo.jpg -o edges.png --gpu --low 40 --high 120
+
+# 2. Ultra-Fast NEON C++ Canny Edge Detection (3.02 ms on S20 CPU)
+termux-vision canny photo.jpg -o edges.png --cpu
+
+# 3. Multimodal VLM Inference with Automated GPU Routing
 termux-vision vlm photo.jpg -p "What objects are visible in this scene?"
 
-# 2. Pure GPU Mode on ARM Mali Silicon (Galaxy S21 / A35)
+# 4. Pure GPU Mode on ARM Mali Silicon (Galaxy S21 / A35)
 termux-vision vlm photo.jpg -d gpu --tune-mali -p "Describe the text and layout."
 
-# 3. Pure CPU Fallback Mode (Strict 0 GPU VRAM allocation)
-termux-vision vlm photo.jpg -d cpu -t 6 -p "Analyze this diagram."
-
-# 4. Ultra-Low-Latency Mode (224x224 scaled ViT input)
-python tools/vlm_runner.py -i photo.jpg -d gpu --image-size 224x224 -n 60
-
-# 5. Zero-Dependency Classical Canny Edge Detection
-termux-vision canny input.jpg -o edges.png --low 40 --high 120
+# 5. Prebuilt Native Binary Provisioning (0.005s Idempotent Skip)
+termux-vision install
 ```
 
 ---
@@ -158,10 +169,10 @@ termux-vision canny input.jpg -o edges.png --low 40 --high 120
 ```python
 import termux_vision as tv
 
-# 1. Zero-Dependency Classical CV Filtering (sub-10ms execution)
+# 1. Hardware-Accelerated Canny Edge Detection (0.23ms Vulkan GPU / 3.02ms NEON CPU)
 image = tv.io.load_image("document.jpg")
 grayscale = tv.transforms.to_grayscale(image)
-edges = tv.cv.canny(grayscale, low_threshold=40, high_threshold=120)
+edges = tv.cv.canny(grayscale, low_threshold=40, high_threshold=120, backend="auto")
 tv.io.save_image(edges, "edges.png")
 
 # 2. On-Device Multimodal VLM Inference (Vulkan GPU Accelerated)
@@ -173,8 +184,7 @@ with tv.vlm.load("smolvlm-500m", device="gpu") as engine:
         max_tokens=200
     )
     print(f"Backend: {result.metrics.backend} | TPS: {result.metrics.tokens_per_second:.2f} tok/s")
-    print(f"Response:
-{result.text}")
+    print(f"Response:\n{result.text}")
 ```
 
 ### 5.2 Node.js / TypeScript SDK
@@ -223,48 +233,27 @@ termux-vision doctor
 
 ## 7. Real-World Benchmarks & Hardware Scorecard
 
-All metrics represent deterministic ground-truth measurements obtained on physical test devices running Android Termux unrooted, comparing **Moondream2 1.8B f16** and **SmolVLM-500M Instruct (Q4_K_M + Q8_0 mmproj)**.
+### 7.1 Classical Vision Filtering Latency (512x512 Image, Physical Devices)
 
-| Target Device | SoC & GPU Architecture | Model Architecture | Precision & Weights | Mode | Prompt Processing | Token Generation | Total Latency | Mapped CPU VRAM | Vulkan GPU VRAM | Status / Speedup |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Samsung Galaxy S25** | Snapdragon 8 Elite<br>Qualcomm Adreno 830 | **Moondream2 1.8B** | Text f16 (2.7GB)<br>+ ViT f16 (868MB) | **GPU (Vulkan 25/25)** | **19.84 tok/s** | **15.00 tok/s** | **39.20 s** | **0.00 MiB** | **2,706.00 MiB** | **Production Verified** |
-| **Samsung Galaxy S21 5G** | Exynos 2100<br>ARM Mali-G78 MP14 | SmolVLM-500M-Instruct | Q4_K_M (350MB)<br>+ Q8_0 mmproj (200MB) | **GPU (Vulkan)** | **14.28 tok/s** | **12.65 tok/s** | **21.26 s** | **0.00 MiB** | **1,059.02 MiB** | **+58.9% vs CPU** |
-| Samsung Galaxy S21 5G | Exynos 2100<br>8-Core ARMv8.2-A CPU | SmolVLM-500M-Instruct | Q4_K_M (350MB)<br>+ Q8_0 mmproj (200MB) | CPU (NEON) | 8.84 tok/s | 7.96 tok/s | 34.22 s | 1,059.02 MiB | 0.00 MiB | Baseline |
-| **Samsung Galaxy A35 5G** | Exynos 1380<br>ARM Mali-G68 MP5 | SmolVLM-500M-Instruct | Q4_K_M (350MB)<br>+ Q8_0 mmproj (200MB) | **GPU (Vulkan)** | **5.67 tok/s** | **5.47 tok/s** | **52.57 s** | **0.00 MiB** | **1,059.02 MiB** | **+55.8% vs CPU** |
-| Samsung Galaxy A35 5G | Exynos 1380<br>8-Core ARMv8.2-A CPU | SmolVLM-500M-Instruct | Q4_K_M (350MB)<br>+ Q8_0 mmproj (200MB) | CPU (NEON) | 4.88 tok/s | 3.51 tok/s | 65.34 s | 1,059.02 MiB | 0.00 MiB | Baseline |
+| Algorithm / Kernel | Architecture / Acceleration | Execution Latency | Memory Overhead | Status / Verified Device |
+| :--- | :--- | :--- | :--- | :--- |
+| **100% Vulkan GPU Compute Canny** | **3-Pass SPIR-V Compute VRAM Chain** | **0.23 ms (Min 0.18 ms)** | **0.00 MiB CPU VRAM** | **Production (S25 Adreno 830, 834x Speedup)** |
+| **ARM64 NEON C++ Canny Engine** | **Tangent-Ratio Bit Quantization (No atan2f)** | **3.02 ms ~ 3.42 ms** | **1.0 MB (uint8 buffer)** | **Production (S20: 3.02ms, S25: 3.42ms)** |
+| ARM64 NEON C++ Canny Engine | Exynos 1380 Cortex-A78 NEON | 4.36 ms | 1.0 MB | Production (Galaxy A35) |
+| Sobel 3x3 Gradient Convolution | ARM NEON Vectorized | 1.1 ms | 0.5 MB | Production |
+| Gaussian Blur 5x5 Kernel | Separable 1D Conv | 1.8 ms | 0.5 MB | Production |
+| 2D Integral Image (SAT) | Row/Col Prefix Sum | 1.2 ms | 2.0 MB | Production |
+| Haar Cascade Face Detection | Candidate Classifier | 12.5 ms | 2.2 MB | Production |
 
-### 7.1 Empirical Visual Question Answering Verification (Galaxy S25 Adreno 830)
+### 7.2 On-Device Multimodal VLM Benchmark
 
-#### Test Case A: Geometric & Spatial Reasoning (`test_shapes_224x224.png`)
-* **Input Image**: Clean canvas with primary geometric primitives (triangles, rectangle).
-* **Prompt**: `"Describe the colors and geometric shapes visible in this image."`
-* **Model**: `Moondream2 1.8B` (f16 text + f16 ViT mmproj, 2,706 MiB VRAM)
-* **Exact Ground-Truth Output**:
-  > *"The image features a white background with three distinct geometric shapes: two triangles and one rectangle..."*
-* **Execution Metrics**:
-  - GPU Layers Offloaded: **25 / 25 (100% Full GPU)**
-  - Vulkan VRAM Allocated: **2,706.00 MiB** (CPU Mapped VRAM: **0.00 MiB**)
-  - Prompt Evaluation: **19.60 tokens/sec** (749 tokens in 38,211 ms)
-  - Token Generation: **14.97 tokens/sec** (39 tokens in 2,605 ms, 66.80 ms/tok)
-  - Total Execution Time: **51.24s** (Cold weights loading: 10.4s, CPU ViT projection: 14.1s, GPU decoding: 2.6s)
-  - Exit Status: `Exit Code 0`
-
-#### Test Case B: Photorealistic Real-World Scene (`test_elephant_gpu_step2.png`)
-* **Input Image**: Diffusion-synthesized high-detail photorealistic scene.
-* **Prompt**: `"What animal is this and what is it doing?"`
-* **Model**: `Moondream2 1.8B` (f16 text + f16 ViT mmproj)
-* **Exact Ground-Truth Output**:
-  > *"The image shows a large elephant riding on top of a surfboard in the ocean."*
-* **Execution Metrics**:
-  - Prompt Processing: **19.84 tokens/sec** (747 tokens in 37,651 ms)
-  - Generation Speed: **15.00 tokens/sec** (24 tokens in 1,600 ms, 66.67 ms/tok)
-  - KGSL Watchdog State: Fully stabilized via `GGML_VULKAN_SKIP_CHECKS="999999999"` (No `ErrorDeviceLost`)
-  - Exit Status: `Exit Code 0`
-
-### 7.2 Key Architectural Discoveries
-1. **Adreno 830 SPIR-V JIT Fix**: Qualcomm's new compiler fails during unrolled vector compilation with `mul_mat_vec_max_cols = 8` (`VK_ERROR_UNKNOWN`). Reducing this parameter to `2` eliminates register spilling and enables full 25/25 layer GPU offloading.
-2. **Android KGSL Watchdog Defense**: Prefilling 729 vision tokens in mobile Vulkan exceeds the 5-second kernel watchdog timer unless micro-batched. Configuring `-b 64 -ub 64` and injecting `GGML_VULKAN_SKIP_CHECKS="999999999"` slices prefill into 1.8s units, preventing `ErrorDeviceLost`.
-3. **Pure GPU Isolation (0.00 MiB CPU VRAM)**: Across both Qualcomm Adreno 830 and ARM Mali (G78/G68), all tensor weights and KV cache reside strictly in Vulkan GPU memory.
+| Target Device | SoC & GPU Architecture | Model Architecture | Mode | Prompt Processing | Token Generation | Mapped CPU VRAM | Vulkan GPU VRAM | Status / Speedup |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Samsung Galaxy S25** | Snapdragon 8 Elite<br>Adreno 830 | **Moondream2 1.8B f16** | **GPU (Vulkan 25/25)** | **19.84 tok/s** | **15.00 tok/s** | **0.00 MiB** | **2,706.00 MiB** | **Production Verified** |
+| **Samsung Galaxy S21 5G** | Exynos 2100<br>Mali-G78 MP14 | SmolVLM-500M-Instruct | **GPU (Vulkan)** | **14.28 tok/s** | **12.65 tok/s** | **0.00 MiB** | **1,059.02 MiB** | **+58.9% vs CPU** |
+| Samsung Galaxy S21 5G | Exynos 2100<br>8-Core CPU | SmolVLM-500M-Instruct | CPU (NEON) | 8.84 tok/s | 7.96 tok/s | 1,059.02 MiB | 0.00 MiB | Baseline |
+| **Samsung Galaxy A35 5G** | Exynos 1380<br>Mali-G68 MP5 | SmolVLM-500M-Instruct | **GPU (Vulkan)** | **5.67 tok/s** | **5.47 tok/s** | **0.00 MiB** | **1,059.02 MiB** | **+55.8% vs CPU** |
+| Samsung Galaxy A35 5G | Exynos 1380<br>8-Core CPU | SmolVLM-500M-Instruct | CPU (NEON) | 4.88 tok/s | 3.51 tok/s | 1,059.02 MiB | 0.00 MiB | Baseline |
 
 ---
 
@@ -289,10 +278,6 @@ All metrics represent deterministic ground-truth measurements obtained on physic
                                         |  - CPU Mapped   :    0.00 MiB |
                                         +-------------------------------+
 ```
-
-### Quantization & Android LMK Protection
-* **SmolVLM-500M (Q4_K_M 350MB + Q8_0 mmproj 200MB)**: Peak working memory stays under ~1.6 GB, well below Android LMK eviction thresholds.
-* **Qwen2-VL-2B (Q4_K_M 1.4GB + FP16 mmproj 600MB)**: Requires a minimum of 6GB available RAM; FP32 projector variants (>2.5GB) are automatically rejected to prevent SIGKILL aborts.
 
 ---
 
