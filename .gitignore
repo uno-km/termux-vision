@@ -46,21 +46,17 @@ id_rsa*
 .npmrc
 secrets.json
 scratch/
-*.tgz
-*.tgz.sha256
+# Media & Assets (allow all files in assets/ and subdirectories)
 *.jpg
 *.png
-!assets/*.png
-!assets/*.jpg
 *.xml
-run_face_test.py
-render_tuned_faces.py
-test_face_scale.py
-live_face_tracker.py
-*.whl
-*.whl.sha256
-releases/
+!assets/**
+
+# Releases
+releases/*.whl
+releases/*.tar.gz
+releases/*.tgz
+!releases/.gitkeep
 build_assets/
-*.tar.gz
-*.tar.gz.sha256
+
 
