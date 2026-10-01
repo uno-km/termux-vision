@@ -48,6 +48,15 @@ secrets.json
 scratch/
 *.tgz
 *.tgz.sha256
+*.jpg
+*.png
+!assets/*.png
+!assets/*.jpg
+*.xml
+run_face_test.py
+render_tuned_faces.py
+test_face_scale.py
+live_face_tracker.py
 *.whl
 *.whl.sha256
 releases/

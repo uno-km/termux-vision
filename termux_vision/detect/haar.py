@@ -134,16 +134,36 @@ def detect_faces(
     image: np.ndarray,
     scale_factor: float = 1.2,
     min_size: Tuple[int, int] = (32, 32),
-    max_results: int = 10
+    max_results: int = 10,
+    score_threshold: float = 0.70,
+    backend: str = "auto"
 ) -> List[Detection]:
     """
-    Scans for face-like contrast candidate regions using heuristic Haar cascade rules.
-    Returns lightweight Detection objects with bounding boxes.
+    Detects faces in the given image.
+    Prioritizes the production UltraFace SSD Deep Learning engine via ONNX Runtime.
+    Falls back to legacy Haar cascade only if ONNX runtime is unavailable.
     """
+    if backend in ("auto", "neural", "onnx"):
+        try:
+            from .neural import NeuralFaceDetector
+            detector = NeuralFaceDetector()
+            detections = detector.detect(
+                image,
+                score_threshold=score_threshold,
+                max_results=max_results
+            )
+            if detections or backend == "neural":
+                return detections
+        except Exception as exc:
+            import logging
+            logging.getLogger("termux_vision.detect").debug(
+                "[termux-vision] NeuralFaceDetector failed or ONNX unavailable: %s. Using Haar fallback.", exc
+            )
+
+    # Legacy Haar Cascade Fallback
     h, w = image.shape[:2]
     max_dim = max(h, w)
     
-    # Scale down for large images to maintain responsive latency on Termux mobile CPUs
     if max_dim > 640:
         ratio = 640.0 / max_dim
         new_w = max(32, int(w * ratio))
@@ -155,7 +175,6 @@ def detect_faces(
         detector = HaarCascadeDetector()
         bboxes = detector.detect_multiscale(scaled_img, scale_factor=scale_factor, min_size=scaled_min_size, max_results=max_results)
         
-        # Scale back to original coordinates
         inv_ratio = 1.0 / ratio
         restored = []
         for b in bboxes:

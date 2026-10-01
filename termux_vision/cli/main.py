@@ -158,10 +158,12 @@ def main():
     p_canny.add_argument("--opencl", action="store_const", const="opencl", dest="device", help="Force OpenCL Compute")
 
     # Command: detect-face
-    p_face = subparsers.add_parser("detect-face", help="Detect face-like candidate regions")
+    p_face = subparsers.add_parser("detect-face", help="Detect face regions via deep learning or cascade")
     p_face.add_argument("image_path", help="Path to input image")
     p_face.add_argument("-o", "--output", default="face_crop.jpg", help="Output path for primary face crop")
     p_face.add_argument("--json", action="store_true", help="Output detection boxes in JSON format")
+    p_face.add_argument("--backend", default="auto", choices=["auto", "neural", "haar"], help="Face detection engine (default: auto -> neural)")
+    p_face.add_argument("--score-threshold", type=float, default=0.70, help="Confidence score threshold for neural detector (default: 0.70)")
 
     # Command: vlm
     p_vlm = subparsers.add_parser("vlm", help="Run VLM Multimodal Image Description / QA with full parameter control")
@@ -329,19 +331,26 @@ def main():
 
     elif args.command == "detect-face":
         img = load_image(args.image_path)
-        detections = detect_faces(img)
+        detections = detect_faces(
+            img,
+            score_threshold=args.score_threshold,
+            backend=args.backend
+        )
         if args.json:
             res_dict = [
                 {"bbox": d.bbox.to_xywh(), "score": d.score} for d in detections
             ]
             print(json.dumps({"count": len(detections), "detections": res_dict}, indent=2))
         else:
-            print(f"[+] Detected {len(detections)} candidate face regions.")
+            print(f"[+] Detected {len(detections)} face regions.")
             if detections:
-                print(f"    - Largest Region Box: {detections[0].bbox.to_xywh()}")
-                face_crop = crop(img, detections[0].bbox, copy=False)
+                # Sort by score if available, otherwise by bounding box area
+                best_det = max(detections, key=lambda d: (d.score if d.score is not None else 0.0, d.bbox.area))
+                score_str = f" (Confidence: {best_det.score * 100:.1f}%)" if best_det.score is not None else ""
+                print(f"    - Primary Face Box: {best_det.bbox.to_xywh()}{score_str}")
+                face_crop = crop(img, best_det.bbox, copy=False)
                 save_image(face_crop, args.output, metadata="strip")
-                print(f"[+] Saved primary candidate crop to {args.output}")
+                print(f"[+] Saved primary face crop to {args.output}")
         sys.exit(EXIT_SUCCESS)
 
     elif args.command == "vlm":
