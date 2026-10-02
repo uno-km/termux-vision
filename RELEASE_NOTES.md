@@ -1,7 +1,7 @@
-# Release Notes - termux-vision v1.5.0
+# Release Notes - termux-vision v1.6.0
 
-**Release Tag**: `v1.5.0`  
-**Distribution Channels**: PyPI (`termux-vision 1.5.0`), NPM (`termux-vision@1.5.0`), GitHub Releases (`v1.5.0`)  
+**Release Tag**: `v1.6.0`  
+**Distribution Channels**: PyPI (`termux-vision 1.6.0`), NPM (`termux-vision@1.6.0`), GitHub Releases (`v1.6.0`)  
 **Target Architecture**: Android Termux (ARM64 / aarch64 Bionic libc & Host Vulkan / OpenCL)  
 **License**: Apache-2.0  
 **Verification Status**: Validated on Physical Samsung Galaxy S25, Galaxy S20, Galaxy A35 Fleets  
@@ -10,7 +10,14 @@
 
 ## 🌟 Highlights & Major Architectural Milestones
 
-### 1. 100% Native Vulkan GPU Compute Canny Pipeline (`0.23 ms`)
+### 1. UltraFace SSD Neural Face Detection Engine (v1.6.0)
+- **Neural SSD Architecture**: Replaced legacy Haar Cascades with dual-resolution UltraFace SSD ONNX runtimes (`version-RFB-320` and `version-slim-320`), delivering sub-15ms face detection on mobile CPUs.
+- **Dynamic Bounding Box Scaling**: Automatic aspect-ratio preserved letterboxing and coordinate un-padding with tuned confidence thresholds.
+- **POSIX ELF Magic Integrity Verification**: Automated deterministic 4-byte `\x7fELF` magic header validation preventing corrupted binary execution.
+- **VLM Namespace Isolation (`termux-vlm-cli`)**: Full ABI decoupling from system `llama-cli` via isolated symbolic links.
+- **Canonical Model Cache**: Native fallback to `~/.cache/termux-ai/models` to eliminate cross-runtime disk bloat.
+
+### 2. 100% Native Vulkan GPU Compute Canny Pipeline (`0.23 ms`)
 - **End-to-End VRAM Chaining**: Built a pure compute shader pipeline chaining Sobel 3x3 Gradient Convolution $\to$ Non-Maximum Suppression (NMS) $\to$ Hysteresis Thresholding via `vkCmdPipelineBarrier` memory barriers without intermediate CPU roundtrips.
 - **Microsecond Latency**: Achieved **0.23 ms** average execution latency (minimum **0.18 ms**) on Snapdragon 8 Elite (Adreno 830), representing an **834x speedup** compared to Python CPU reference (192.0 ms).
 - **Zero CPU-Mapped VRAM**: Guaranteed 0.00 MiB host memory footprint with unified memory buffer pooling and deterministic descriptor set recycling.

@@ -5,6 +5,23 @@ All notable changes to `termux-vision` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-10-01
+
+### Added
+- **UltraFace SSD ONNX Runtime Upgrade**: Replaced legacy Haar cascades with real-time neural face detection models (`version-RFB-320` and `version-slim-320`), supporting multi-face tracking and tuned bounding boxes.
+- **POSIX ELF Binary Integrity Verification**: Enforced deterministic 4-byte `\x7fELF` magic byte header audit on all compiled runtime binaries.
+- **VLM Namespace Isolation (`termux-vlm-cli`)**: Created dedicated binary symlink namespace to prevent runtime conflicts with system-level `llama-cli`.
+- **Shared Model Cache Fallback**: Integrated centralized `~/.cache/termux-ai/models` canonical lookup, reducing cross-runtime disk duplication.
+- **3-Tier CLI Mode Governance**: Implemented strict CLI handling with `--force`, `--dedicate`, and skip-if-healthy instant (<0.002s) bypass.
+
+## [1.5.0] - 2026-10-01
+
+### Added
+- **100% Native Vulkan GPU Canny Edge Pipeline**: 3-Pass SPIR-V compute shader chain with 0.23ms latency on Snapdragon 8 Elite (Adreno 830).
+- **Trigonometric-Free ARM64 NEON Canny Engine**: Eliminated `atan2f` transcendent computations via rational tangent ratio quantization.
+- **Prebuilt Asset-First Idempotent Installer**: Instant skip when verified ARM64 prebuilt assets reside in `$PREFIX/lib`.
+- **Ecosystem 5-Backend Standardization**: Standardized compute routing across `auto`, `gpu`, `vulkan`, `opencl`, and `cpu`.
+
 ## [1.4.5] - 2026-09-18
 
 ### Fixed
