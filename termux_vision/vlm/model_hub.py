@@ -28,9 +28,13 @@ def is_known_remote_model(model_name: str) -> bool:
     clean = str(model_name).lower().strip()
     return clean in MODEL_REGISTRY or clean.startswith("hf:") or "/" in clean or clean.startswith("http://") or clean.startswith("https://")
 
+SHARED_MODELS_DIR = os.path.expanduser("~/.cache/termux-ai/models")
+
 def get_cache_dir() -> str:
     cache_dir = os.path.expanduser("~/.cache/termux-vision/models")
     legacy_dir = os.path.expanduser("~/.cache/vlm_models")
+    if os.path.exists(SHARED_MODELS_DIR):
+        return SHARED_MODELS_DIR
     if os.path.exists(legacy_dir) and not os.path.exists(cache_dir):
         return legacy_dir
     os.makedirs(cache_dir, exist_ok=True)
@@ -124,6 +128,16 @@ def download_vlm_model(
 
     text_dest = os.path.join(target_dir, info["text_file"])
     vision_dest = os.path.join(target_dir, info["vision_file"])
+
+    # Fallback search in shared model cache
+    shared_text = os.path.join(SHARED_MODELS_DIR, info["text_file"])
+    shared_vision = os.path.join(SHARED_MODELS_DIR, info["vision_file"])
+
+    if not force:
+        if os.path.isfile(shared_text) and os.path.getsize(shared_text) > 0:
+            text_dest = shared_text
+        if os.path.isfile(shared_vision) and os.path.getsize(shared_vision) > 0:
+            vision_dest = shared_vision
 
     if force or not os.path.exists(text_dest) or os.path.getsize(text_dest) == 0:
         download_file_stream(info["text_url"], text_dest, progress_callback=progress_callback)

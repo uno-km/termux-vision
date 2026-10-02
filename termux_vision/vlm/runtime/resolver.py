@@ -9,7 +9,7 @@ from typing import Mapping, Optional, Tuple
 
 from ...errors import RuntimeNotFoundError
 
-DEFAULT_RUNTIME_NAME = "llama-cli"
+DEFAULT_RUNTIME_NAME = "termux-vlm-cli"
 RUNTIME_ENV_VAR = "TERMUX_VISION_LLAMA_CLI"
 
 @dataclass(frozen=True)
@@ -20,7 +20,13 @@ class RuntimeInfo:
 
 def _is_executable_file(path: str) -> bool:
     candidate = Path(path).expanduser()
-    return candidate.is_file() and os.access(str(candidate), os.X_OK)
+    if not candidate.is_file() or not os.access(str(candidate), os.X_OK):
+        return False
+    try:
+        with open(candidate.resolve(), "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except Exception:
+        return False
 
 def _get_runtime_version(executable: str) -> Optional[str]:
     commands = (
@@ -112,8 +118,8 @@ def resolve_llama_cli(
             source="environment",
         )
 
-    # 3. PATH lookup (Multimodal & LLM runtimes)
-    for name in ("llama-mtmd-cli", "llama-cli"):
+    # 3. PATH lookup (Multimodal VLM runtime prioritized)
+    for name in ("termux-vlm-cli", "llama-mtmd-cli", "llama-cli"):
         discovered = shutil.which(name)
         if discovered:
             resolved = os.path.abspath(discovered)
@@ -126,6 +132,9 @@ def resolve_llama_cli(
     # 4. Known Termux / Linux paths (SSOT Standard)
     prefix = environment.get("PREFIX", "/data/data/com.termux/files/usr")
     candidates = (
+        os.path.join(prefix, "bin", "termux-vlm-cli"),
+        os.path.expanduser("~/.local/bin/termux-vlm-cli"),
+        os.path.expanduser("~/bin/termux-vlm-cli"),
         os.path.expanduser("~/.termux-llama/current/bin/llama-mtmd-cli"),
         os.path.expanduser("~/.termux-llama/current/bin/llama-cli"),
         os.path.expanduser("~/.termux-llamacpp/current/bin/llama-mtmd-cli"),

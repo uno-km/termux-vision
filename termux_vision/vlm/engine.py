@@ -55,27 +55,22 @@ class ZeroFlickerEngine:
             prompt_path = pf.name
             pf.write(prompt)
 
-        # 1. Resolve canonical execution engine via termux-llamacpp Python SDK (Primary SSOT)
-        bin_path = "llama-cli"
+        # 1. Resolve canonical execution engine (prioritizing dedicated termux-vlm-cli)
+        bin_path = "termux-vlm-cli"
         llamacpp_runtime = None
         try:
-            from termux_llamacpp import LlamaRuntime
-            llamacpp_runtime = LlamaRuntime()
-            resolved = llamacpp_runtime.get_binary_path("llama-cli")
-            if resolved:
-                bin_path = str(resolved)
-        except (ImportError, OSError) as _llamacpp_err:
-            import logging
-            _log = logging.getLogger(__name__)
-            _log.debug("vision: termux-llamacpp SDK runtime unavailable (%s), trying local resolver.", _llamacpp_err)
+            from .runtime.resolver import resolve_llama_cli
+            bin_path = resolve_llama_cli().executable
+        except Exception:
             try:
-                from .runtime.resolver import resolve_llama_cli
-                bin_path = resolve_llama_cli().executable
-            except (ImportError, OSError, AttributeError) as _res_err:
-                _log.warning(
-                    "vision: llama-cli resolver failed (%s); will attempt PATH lookup at runtime.",
-                    _res_err,
-                )
+                from termux_llamacpp import LlamaRuntime
+                llamacpp_runtime = LlamaRuntime()
+                resolved = llamacpp_runtime.get_binary_path("llama-cli")
+                if resolved:
+                    bin_path = str(resolved)
+            except Exception as _llamacpp_err:
+                import logging
+                logging.getLogger(__name__).debug("vision: termux-llamacpp SDK fallback unavailable: %s", _llamacpp_err)
 
         # 2. Prepare execution environment (prioritizing termux-llamacpp and ameva-runtime)
         if llamacpp_runtime and hasattr(llamacpp_runtime, "prepare_env"):

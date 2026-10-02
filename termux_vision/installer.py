@@ -138,31 +138,38 @@ def download_with_progress(url: str, dest_path: Path, label: str) -> bool:
     return False
 
 
+def is_valid_elf(path: Path) -> bool:
+    """Verifies that the target path is a valid ELF executable/library via magic bytes."""
+    try:
+        p = path.resolve() if path.is_symlink() else path
+        if not p.is_file():
+            return False
+        with open(p, "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except (OSError, PermissionError):
+        return False
+
+
 def verify_multimodal_support(binary_path: Optional[Path] = None) -> Tuple[bool, str]:
     """
-    Inspects whether llama-cli binary supports multimodal vision flags (--mmproj or -mm)
-    and meets binary size thresholds (>= 5.0 MB, rejecting 4.9MB text-only completions).
+    Inspects whether VLM binary (termux-vlm-cli prioritized) supports multimodal vision flags (--mmproj or -mm).
     """
     candidate: Optional[Path] = binary_path
     if not candidate:
-        prefix_cli = PREFIX_BIN / "llama-cli"
-        if prefix_cli.is_file():
-            candidate = prefix_cli
-        else:
-            w = shutil.which("llama-cli")
-            if w:
+        for name in ("termux-vlm-cli", "llama-cli"):
+            prefix_cli = PREFIX_BIN / name
+            if prefix_cli.is_file() and is_valid_elf(prefix_cli):
+                candidate = prefix_cli
+                break
+            w = shutil.which(name)
+            if w and is_valid_elf(Path(w)):
                 candidate = Path(w)
+                break
 
-    if not candidate or not candidate.is_file():
-        return False, "Binary 'llama-cli' not found"
+    if not candidate or not candidate.is_file() or not is_valid_elf(candidate):
+        return False, "Binary 'termux-vlm-cli' or multimodal runtime not found or invalid ELF"
 
     try:
-        st = candidate.stat()
-        # Text-only llama-completion is ~4.96MB (4,960,112 bytes).
-        # Multimodal llama-cli with clip is >= 5.88MB (5,888,144 bytes).
-        if st.st_size < 5_200_000:
-            return False, f"Binary size {st.st_size / (1024*1024):.2f}MB indicates text-only completion build (< 5.2MB)"
-
         proc = subprocess.run(
             [str(candidate), "--help"],
             capture_output=True,
@@ -171,9 +178,9 @@ def verify_multimodal_support(binary_path: Optional[Path] = None) -> Tuple[bool,
         )
         combined = (proc.stdout or "") + (proc.stderr or "")
         if "--mmproj" in combined or "-mm " in combined or "--image" in combined:
-            return True, f"Verified multimodal support (Size: {st.st_size / (1024*1024):.2f}MB)"
+            return True, f"Verified multimodal support ({candidate.name})"
         else:
-            return False, "Missing --mmproj parameter in llama-cli --help output"
+            return False, f"Missing --mmproj parameter in {candidate.name} --help output"
     except Exception as exc:
         return False, f"Inspection error: {exc}"
 
@@ -194,8 +201,8 @@ def check_assets_status() -> Dict[str, Any]:
         CSRC_DIR / "libvulkan_cv.so",
     ]
 
-    fast_cv_ok = any(p.is_file() and p.stat().st_size > 1000 for p in fast_cv_candidates)
-    vulkan_cv_ok = any(p.is_file() and p.stat().st_size > 1000 for p in vulkan_cv_candidates)
+    fast_cv_ok = any(is_valid_elf(p) for p in fast_cv_candidates)
+    vulkan_cv_ok = any(is_valid_elf(p) for p in vulkan_cv_candidates)
     mm_ok, mm_reason = verify_multimodal_support()
 
     all_ready = fast_cv_ok and vulkan_cv_ok and mm_ok
@@ -329,12 +336,15 @@ def install_prebuilt_assets(force: bool = False, verbose: bool = True) -> bool:
                     if verbose:
                         print(f"  [+] Installed {so_name} -> {PREFIX_LIB / so_name}")
 
-            # Copy llama-cli to PREFIX/bin
-            for found_cli in staging_dir.rglob("llama-cli"):
-                shutil.copy2(found_cli, PREFIX_BIN / "llama-cli")
-                (PREFIX_BIN / "llama-cli").chmod(0o755)
-                if verbose:
-                    print(f"  [+] Installed multimodal llama-cli -> {PREFIX_BIN / 'llama-cli'}")
+            # Copy termux-vlm-cli to PREFIX/bin (strictly isolated namespace from llama-cli)
+            for found_cli in staging_dir.rglob("llama-cli*"):
+                if found_cli.is_file() and not found_cli.name.endswith(".so"):
+                    vlm_target = PREFIX_BIN / "termux-vlm-cli"
+                    shutil.copy2(found_cli, vlm_target)
+                    vlm_target.chmod(0o755)
+                    if verbose:
+                        print(f"  [+] Installed dedicated multimodal VLM CLI -> {vlm_target}")
+                    break
 
             shutil.rmtree(staging_dir, ignore_errors=True)
             return True
@@ -507,3 +517,55 @@ def install_all(
 def ensure_llamacpp_runtime(auto_yes: bool = False, interactive: bool = True) -> bool:
     """Backward compatibility alias pointing to unified install_all."""
     return install_all(auto_yes=auto_yes, verbose=True)
+
+
+def inspect_engine_state(binary_path: Path, current_pkg_version: Optional[str] = None) -> str:
+    """Dynamically triages existing binary state without hardcoding."""
+    if not binary_path.exists() and not binary_path.is_symlink():
+        return "NOT_INSTALLED"
+    if not is_valid_elf(binary_path):
+        return "BROKEN"
+    if binary_path.is_symlink():
+        target = str(binary_path.resolve())
+        if ".local/share/ameva" in target:
+            return "AMEVA_MANAGED"
+    if current_pkg_version:
+        try:
+            res = subprocess.run([str(binary_path), "--version"], capture_output=True, text=True, timeout=2)
+            out = res.stdout + res.stderr
+            if current_pkg_version in out:
+                return "IDENTICAL"
+        except Exception:
+            pass
+    return "LEGACY_STANDALONE"
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="termux-vision native asset provisioner")
+    parser.add_argument("--force", "-f", action="store_true", help="Force re-download and re-install all assets")
+    parser.add_argument("--from-source", action="store_true", help="Compile C++ engines locally from source")
+    parser.add_argument("--dedicate", action="store_true", help="Smart inspection mode: preserve AMEVA runtime symlinks, auto-upgrade legacy binaries")
+    args = parser.parse_args()
+
+    vlm_bin = PREFIX_BIN / "termux-vlm-cli"
+    ver = _resolve_package_version()
+
+    if args.dedicate:
+        state = inspect_engine_state(vlm_bin, ver)
+        if state == "AMEVA_MANAGED":
+            print("  [DEDICATE] AMEVA Runtime managed engine detected. Preserving co-existence (<0.002s).")
+            sys.exit(0)
+        elif state == "IDENTICAL":
+            print(f"  [DEDICATE] Identical engine version already active ({ver}). Skipping.")
+            sys.exit(0)
+        elif state == "LEGACY_STANDALONE":
+            print("  [DEDICATE] Legacy standalone engine detected. Upgrading to latest...")
+            args.force = True
+
+    success = install_all(from_source=args.from_source, force=args.force, verbose=True)
+    sys.exit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    main()
